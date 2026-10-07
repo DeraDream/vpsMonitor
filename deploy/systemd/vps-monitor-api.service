@@ -1,0 +1,20 @@
+[Unit]
+Description=VPS Monitor API
+After=network.target
+
+[Service]
+Type=simple
+User=vpsmonitor
+WorkingDirectory=/opt/vps-monitor
+EnvironmentFile=/etc/vps-monitor.env
+Environment=HOST=127.0.0.1
+Environment=PORT=4173
+Environment=DATA_DIR=/opt/vps-monitor/data
+ExecStart=/usr/bin/env node /opt/vps-monitor/apps/api/src/server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

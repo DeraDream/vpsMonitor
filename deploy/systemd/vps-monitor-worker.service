@@ -1,0 +1,19 @@
+[Unit]
+Description=VPS Monitor Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vpsmonitor
+WorkingDirectory=/opt/vps-monitor
+EnvironmentFile=/etc/vps-monitor.env
+Environment=DATA_DIR=/opt/vps-monitor/data
+ExecStart=/usr/bin/env node /opt/vps-monitor/apps/worker/src/worker.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

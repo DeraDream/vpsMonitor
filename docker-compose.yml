@@ -1,12 +1,31 @@
 services:
-  vps-monitor:
+  api:
+    image: ghcr.io/deradream/vpsmonitor:latest
     build: .
-    container_name: vps-monitor
+    container_name: vps-monitor-api
     restart: unless-stopped
+    command: ["node", "apps/api/src/server.mjs"]
     ports:
       - "127.0.0.1:4173:4173"
     environment:
+      HOST: 0.0.0.0
+      PORT: 4173
+      DATA_DIR: /app/data
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set in .env}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set in .env}
     volumes:
       - ./data:/app/data
+  worker:
+    image: ghcr.io/deradream/vpsmonitor:latest
+    build: .
+    container_name: vps-monitor-worker
+    restart: unless-stopped
+    command: ["node", "apps/worker/src/worker.mjs"]
+    environment:
+      DATA_DIR: /app/data
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set in .env}
+      WORKER_TICK_MS: ${WORKER_TICK_MS:-1000}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - api

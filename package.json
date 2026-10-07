@@ -1,11 +1,18 @@
 {
   "name": "vps-monitor",
+  "version": "2.0.0",
   "private": true,
-  "version": "1.1",
   "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node --watch server.mjs",
-    "test": "node --test"
-  }
+    "dev:web": "npm --workspace @vps-monitor/web run dev",
+    "dev:api": "npm --workspace @vps-monitor/api run dev",
+    "dev:worker": "npm --workspace @vps-monitor/worker run dev",
+    "build:web": "npm --workspace @vps-monitor/web run build",
+    "start:api": "npm --workspace @vps-monitor/api run start",
+    "start:worker": "npm --workspace @vps-monitor/worker run start",
+    "test": "node --test",
+    "check": "node --check apps/api/src/server.mjs && node --check apps/worker/src/worker.mjs && node --check packages/core/src/monitor-engine.mjs && node --check packages/core/src/service.mjs && node --check packages/db/src/database.mjs"
+  },
+  "engines": {"node": ">=22.5"}
 }

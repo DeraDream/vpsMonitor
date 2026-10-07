@@ -1,0 +1,1 @@
+{"name":"@vps-monitor/worker","version":"2.0.0","private":true,"type":"module","scripts":{"start":"node src/worker.mjs","dev":"node --watch src/worker.mjs"},"dependencies":{"@vps-monitor/core":"*","@vps-monitor/db":"*","@vps-monitor/adapters":"*"}}
