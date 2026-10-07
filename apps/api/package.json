@@ -1,1 +1,15 @@
-{"name":"@vps-monitor/api","version":"2.0.0","private":true,"type":"module","scripts":{"start":"node src/server.mjs","dev":"node --watch src/server.mjs"},"dependencies":{"@vps-monitor/core":"*","@vps-monitor/db":"*","@vps-monitor/adapters":"*"}}
+{
+  "name": "@vps-monitor/api",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs"
+  },
+  "dependencies": {
+    "@vps-monitor/core": "*",
+    "@vps-monitor/db": "*",
+    "@vps-monitor/adapters": "*"
+  }
+}

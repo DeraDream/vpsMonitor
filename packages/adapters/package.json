@@ -1,1 +1,6 @@
-{"name":"@vps-monitor/adapters","version":"2.0.0","type":"module","exports":"./src/index.mjs"}
+{
+  "name": "@vps-monitor/adapters",
+  "version": "1.2.0",
+  "type": "module",
+  "exports": "./src/index.mjs"
+}

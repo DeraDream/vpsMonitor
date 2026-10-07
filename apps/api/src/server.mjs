@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createDatabase } from "@vps-monitor/db";
 import { createService, encryptToken, tokenKey, formatCard, telegramCall, repositoryMatches } from "@vps-monitor/core";
 
-const host=process.env.HOST||"127.0.0.1",port=Number(process.env.PORT||4173),version="2.0.0";
+const host=process.env.HOST||"127.0.0.1",port=Number(process.env.PORT||4173),version="1.2.0";
 const root=resolve(fileURLToPath(new URL("../../..",import.meta.url)));
 const webDir=process.env.WEB_DIST_DIR?resolve(process.env.WEB_DIST_DIR):join(root,"apps/web/dist");
 const store=createDatabase(process.env.DATA_DIR||join(root,"data"));

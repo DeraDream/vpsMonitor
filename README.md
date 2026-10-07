@@ -1,6 +1,6 @@
-# VPS Monitor 2.0
+# VPS Monitor 1.2
 
-个人 VPS 补货监控后台。2.0 将原来的单文件 Node 服务重构为 **Vue 前端 + API + Worker + SQLite**，但保留现有页面功能和监控状态机行为。
+个人 VPS 补货监控后台。1.2 将原来的单文件 Node 服务重构为 **Vue 前端 + API + Worker + SQLite**，但保留现有页面功能和监控状态机行为。
 
 ## 架构
 
@@ -91,7 +91,7 @@ Docker 模式不在应用内执行 Git 更新，应通过 `docker compose pull &
 
 ## 从 1.x 升级
 
-首次启动 2.0 时，如果 `data/store.json` 存在且 SQLite 尚无业务数据，会自动迁移：
+首次启动 1.2 时，如果 `data/store.json` 存在且 SQLite 尚无业务数据，会自动迁移：
 
 - providers
 - plans
