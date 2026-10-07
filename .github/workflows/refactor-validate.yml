@@ -41,10 +41,14 @@ jobs:
           test -f Dockerfile
           test -f docker-compose.yml
           test -f deploy/install.sh
-      - name: Materialize validated refactor on branch
+      - name: Materialize validated source files
         run: |
+          cp .github/workflows/refactor-validate.yml /tmp/refactor-validate.yml
+          rm -rf /tmp/vps-monitor-refactor/.github
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/vps-monitor-refactor/. .
+          mkdir -p .github/workflows
+          cp /tmp/refactor-validate.yml .github/workflows/refactor-validate.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
