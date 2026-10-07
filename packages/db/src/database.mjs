@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { encryptToken } from "../../core/src/crypto.mjs";
 
 const DEFAULT_SETTINGS = {
-  telegram: { botTokenEncrypted: "", chatId: "", enabled: false, showBuyLink: true, template: "standard", notificationMode: "restock", notifyNewPlans: true, quietHours: { enabled: false, start: "23:00", end: "08:00" } },
+  telegram: { botTokenEncrypted: "", chatId: "", channelEnabled: true, personalChatId: "", personalEnabled: false, enabled: false, showBuyLink: true, template: "standard", notificationMode: "restock", notifyNewPlans: true, quietHours: { enabled: false, start: "23:00", end: "08:00" } },
   updates: { repository: "DeraDream/vpsMonitor", branch: "main" }
 };
 

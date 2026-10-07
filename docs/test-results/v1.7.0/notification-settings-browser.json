@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "name": "旧设置读取自动获得默认补货模式及关闭的免打扰",
+      "result": "PASS"
+    },
+    {
+      "name": "通知模式与跨午夜免打扰可以从网页保存",
+      "result": "PASS"
+    },
+    {
+      "name": "刷新页面后新选项与区间持久化",
+      "result": "PASS"
+    },
+    {
+      "name": "三种 TG 卡片预览包含库存变化标题和前后数量",
+      "result": "PASS"
+    },
+    {
+      "name": "开始结束相同显示页内错误，保存失败不覆盖已保存设置",
+      "result": "PASS"
+    },
+    {
+      "name": "API 拒绝未知模式、非法区间、布尔类型和时区字段",
+      "result": "PASS"
+    },
+    {
+      "name": "区间内手动 TG 测试也被统一禁止，无真实消息发送",
+      "result": "PASS"
+    },
+    {
+      "name": "频道及个人私聊可独立配置并刷新持久化",
+      "result": "PASS"
+    },
+    {
+      "name": "频道与个人测试按钮发送独立目标参数，无真实 Telegram 消息",
+      "result": "PASS"
+    },
+    {
+      "name": "非法个人及频道 ID 被拒绝，不覆盖已有配置",
+      "result": "PASS"
+    },
+    {
+      "name": "1440px 通知设置与区间控件不溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "1024px 通知设置与区间控件不溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "768px 通知设置与区间控件不溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "390px 通知设置与区间控件不溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "320px 通知设置与区间控件不溢出",
+      "result": "PASS"
+    }
+  ],
+  "errors": []
+}

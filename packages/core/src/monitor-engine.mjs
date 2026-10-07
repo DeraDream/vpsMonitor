@@ -31,7 +31,7 @@ export function reconcilePlan(previous, next, monitor, {notifyAllChanges=false}=
   const wasAvailable = Boolean(previous.available), isAvailable = Boolean(next.available);
   const base = { ...previous, ...next, notification };
   if (!monitored(next, monitor)) return { next: base, action: null, reason: "不在监控范围" };
-  if (!wasAvailable && isAvailable) return { next: { ...base, notification: null }, action: "restocked", reason: "由缺货变为有货" };
+  if (!wasAvailable && isAvailable) return { next: { ...base, notification: null, notifications: {} }, action: "restocked", reason: "由缺货变为有货" };
   if (wasAvailable && !isAvailable) return { next: base, action: notifyAllChanges || notification?.messageId ? "sold_out" : null, reason: "由有货变为缺货" };
   if ((notifyAllChanges && (previous.quantity ?? null) !== (next.quantity ?? null)) || (wasAvailable && isAvailable && Number.isInteger(previous.quantity) && Number.isInteger(next.quantity) && previous.quantity !== next.quantity && notification?.messageId)) {
     return { next: base, action: "stock_changed", reason: !Number.isInteger(previous.quantity)||!Number.isInteger(next.quantity) ? "库存数量公开状态变化" : next.quantity < previous.quantity ? "库存减少" : "库存增加" };

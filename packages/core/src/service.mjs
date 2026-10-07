@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getAdapter } from "@vps-monitor/adapters";
 import { normalizePlan, reconcilePlan, nextRetry, monitored } from "./monitor-engine.mjs";
-import { formatCard, telegramCall } from "./telegram.mjs";
+import { formatCard, telegramCall, telegramTargets } from "./telegram.mjs";
 import { quietHoursStatus } from "./notification-policy.mjs";
 
 export function createService(store, {now: notificationNow=Date.now}={}) {
@@ -23,10 +23,12 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
     if(scope==="selected"&&!planIds.length) throw new Error("请选择至少一个套餐，或改为监控全部套餐");
     return {providerId:provider.id,scope,planIds,categoryIds,intervalSeconds:Math.max(30,Math.min(3600,Number(input.intervalSeconds)||60)),enabled:Boolean(input.enabled)};
   }
-  function enqueue(action, plan, monitor) {
+  function enqueue(action, plan, monitor, onlyRecipient=null) {
     const t=store.getSettings().telegram;
-    if(!t.enabled||!t.chatId||!t.botTokenEncrypted){addEvent("notification_skipped",`${plan.name}：通知未配置，已记录状态变化`,{providerId:plan.providerId,planId:plan.id});return;}
-    const job={id:`job_${randomUUID()}`,action,deliveryMode:t.notificationMode||"restock",planId:plan.id,monitorId:monitor.id,cycleId:plan.notificationCycle,snapshot:plan,target:plan.notification,attempts:0,nextAttemptAt:new Date().toISOString(),createdAt:new Date().toISOString(),lastError:null};store.putNotification(job);
+    if(!t.enabled||!telegramTargets(t).length||!t.botTokenEncrypted){addEvent("notification_skipped",`${plan.name}：通知未配置，已记录状态变化`,{providerId:plan.providerId,planId:plan.id});return;}
+    for(const recipient of onlyRecipient?[onlyRecipient]:telegramTargets(t)){
+    const job={recipientChatId:recipient.chatId,recipientKind:recipient.kind,id:`job_${randomUUID()}`,action,deliveryMode:t.notificationMode||"restock",planId:plan.id,monitorId:monitor.id,cycleId:plan.notificationCycle,snapshot:plan,target:plan.notifications?.[recipient.chatId]||(String(plan.notification?.chatId)===recipient.chatId?plan.notification:null),attempts:0,nextAttemptAt:new Date().toISOString(),createdAt:new Date().toISOString(),lastError:null};store.putNotification(job);
+    }
   }
   async function deliverNotifications(){
     for(const listed of store.listNotifications()){
@@ -38,7 +40,12 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
         if(!job)continue;
         const settings=store.getSettings().telegram;
         // Disabling notifications pauses the queue without losing its retry state.
-        if(!settings.enabled||!settings.chatId||!settings.botTokenEncrypted)continue;
+        if(!settings.enabled||!telegramTargets(settings).length||!settings.botTokenEncrypted)continue;
+        const recipients=telegramTargets(settings);
+        if(!job.recipientChatId&&recipients.length>1){store.transaction(()=>{for(const recipient of recipients)store.putNotification({...job,id:`job_${randomUUID()}`,recipientChatId:recipient.chatId,recipientKind:recipient.kind,target:String(job.target?.chatId)===recipient.chatId?job.target:null});store.deleteNotification(job.id)});continue;}
+        const recipient=job.recipientChatId?recipients.find(target=>target.chatId===job.recipientChatId):recipients[0];
+        if(!recipient){store.finishNotification(job.id,owner);continue;}
+        const chatId=recipient.chatId;
         const plan=store.getPlan(job.planId);
         const monitor=job.monitorId?store.getMonitor(job.monitorId):plan&&store.getMonitorByProvider(plan.providerId);
         if(!plan||plan.listed===false||!monitor){store.finishNotification(job.id,owner);continue;}
@@ -49,43 +56,43 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
         const allChanges=job.deliveryMode==="all"&&settings.notificationMode==="all";
         if(job.deliveryMode==="all"&&!allChanges&&job.action!=="restocked"&&job.action!=="new_plan"){store.finishNotification(job.id,owner);continue;}
         const sameCycle=!job.cycleId||job.cycleId===plan.notificationCycle;
-        const target=job.target||plan.notification;
-        if(!allChanges&&((job.action==="restocked"&&(!sameCycle||!plan.available||plan.notification?.messageId))||
+        const target=(String(job.target?.chatId)===chatId?job.target:null)||plan.notifications?.[chatId]||(String(plan.notification?.chatId)===chatId?plan.notification:null);
+        if(!allChanges&&((job.action==="restocked"&&(!sameCycle||!plan.available||target?.messageId))||
            (job.action==="stock_changed"&&(!sameCycle||!plan.available)))){store.finishNotification(job.id,owner);continue;}
         try{
           if(allChanges||job.action==="new_plan"){
             // Each queued event is an immutable observation, including changes
             // made during quiet hours. Never rewrite history with today's stock.
             const card=job.snapshot||plan;
-            const result=await telegramCall(settings,"sendMessage",{chat_id:settings.chatId,text:formatCard(card,settings,job.action),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
+            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:formatCard(card,settings,job.action),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
             store.transaction(()=>{
               const latest=store.getPlan(plan.id);
-              if(latest&&latest.notificationCycle===job.cycleId){store.putPlan({...latest,notification:{chatId:String(settings.chatId),messageId:result.message_id,sentAt:new Date().toISOString()}});}
+              if(latest&&latest.notificationCycle===job.cycleId){const notification={chatId,messageId:result.message_id,sentAt:new Date().toISOString()};store.putPlan({...latest,notification,notifications:{...latest.notifications,[chatId]:notification}});}
             });
-            addEvent("telegram_sent",`${plan.name}：已发送${job.action==="new_plan"?"新上架":job.action==="sold_out"?"售罄":job.action==="stock_changed"?"库存变化":"补货"}卡片`,{providerId:plan.providerId,planId:plan.id});
+            addEvent("telegram_sent",`${plan.name}：已发送${job.action==="new_plan"?"新上架":job.action==="sold_out"?"售罄":job.action==="stock_changed"?"库存变化":"补货"}卡片`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }else if(job.action==="restocked") {
-            const result=await telegramCall(settings,"sendMessage",{chat_id:settings.chatId,text:formatCard(plan,settings,"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
+            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:formatCard(plan,settings,"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
             // A probe may have changed stock while the network request was in flight.
             store.transaction(()=>{
               const latest=store.getPlan(plan.id),active=store.getMonitor(monitor.id);
-              const notification={chatId:String(settings.chatId),messageId:result.message_id,sentAt:new Date().toISOString()};
-              if(latest&&latest.notificationCycle===plan.notificationCycle){latest.notification=notification;store.putPlan(latest);}
+              const notification={chatId:chatId,messageId:result.message_id,sentAt:new Date().toISOString()};
+              if(latest&&latest.notificationCycle===plan.notificationCycle){latest.notification=notification;latest.notifications={...latest.notifications,[chatId]:notification};store.putPlan(latest);}
               if(active&&latest&&(!latest.available||latest.notificationCycle!==plan.notificationCycle)){
-                enqueue("sold_out",{...plan,available:false,quantity:0,notification},active);
-              }else if(active&&latest&&latest.quantity!==plan.quantity){enqueue("stock_changed",{...latest,notification},active);}
+                enqueue("sold_out",{...plan,available:false,quantity:0,notification},active,recipient);
+              }else if(active&&latest&&latest.quantity!==plan.quantity){enqueue("stock_changed",{...latest,notification},active,recipient);}
             });
-            addEvent("telegram_sent",`${plan.name}：已发送补货卡片`,{providerId:plan.providerId,planId:plan.id});
+            addEvent("telegram_sent",`${plan.name}：已发送补货卡片`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }else if(target?.messageId){
             const soldOut=job.action==="sold_out",card=soldOut?(job.snapshot||plan):plan;
             await telegramCall(settings,"editMessageText",{chat_id:target.chatId,message_id:target.messageId,text:formatCard(card,settings,soldOut?"sold_out":"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
-            addEvent("telegram_edited",`${plan.name}：${soldOut?"已编辑为售罄":"已更新库存卡片"}`,{providerId:plan.providerId,planId:plan.id});
+            addEvent("telegram_edited",`${plan.name}：${soldOut?"已编辑为售罄":"已更新库存卡片"}`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }
           store.finishNotification(job.id,owner);
         }catch(error){
           if(error.quietHours){job.nextAttemptAt=error.resumeAt;store.finishNotification(job.id,owner,job);continue;}
-          if(error.permanent){store.finishNotification(job.id,owner);addEvent("telegram_failed",`${plan.name}：TG 永久错误，已停止重试`,{planId:plan.id,error:error.message});continue;}
+          if(error.permanent){store.finishNotification(job.id,owner);addEvent("telegram_failed",`${plan.name}：TG 永久错误，已停止重试`,{planId:plan.id,recipientKind:recipient.kind,error:error.message});continue;}
           job.attempts+=1;job.lastError=error.message;job.nextAttemptAt=error.retryAfter?new Date(Date.now()+Number(error.retryAfter)*1000).toISOString():nextRetry(job.attempts);
-          store.finishNotification(job.id,owner,job);addEvent("telegram_failed",`${plan.name}：TG 投递失败，将重试`,{providerId:plan.providerId,planId:plan.id,error:error.message});
+          store.finishNotification(job.id,owner,job);addEvent("telegram_failed",`${plan.name}：TG 投递失败，将重试`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind,error:error.message});
         }
       }finally{store.releaseNotification(listed.id,owner);}
     }

@@ -212,3 +212,27 @@ test('更改监控套餐范围后，原范围的积压通知不能继续发送',
 test('切回默认补货模式，待发送的全部变化库存和售罄提醒取消',()=>fixture(async({store,service,calls,probe})=>{
  allNotifications(store);await probe({available:true,quantity:3});await service.deliverNotifications();await probe({available:true,quantity:2});await probe({available:false,quantity:0});const settings=store.getSettings();settings.telegram.notificationMode='restock';store.setSettings(settings);await service.deliverNotifications();assert.equal(calls.length,1);assert.equal(store.listNotifications().length,0);
 }));
+
+test('频道和个人私聊分别发送、编辑、售罄和开启下一补货周期',()=>fixture(async({store,service,calls,probe})=>{
+ const settings=store.getSettings();Object.assign(settings.telegram,{channelEnabled:true,personalEnabled:true,personalChatId:'12345'});store.setSettings(settings)
+ await probe({available:false,quantity:0});await probe({available:true,quantity:3});await service.deliverNotifications()
+ assert.deepEqual(calls.map(call=>call.chat_id),['-1','12345']);assert.equal(calls.length,2)
+ const first=store.getPlan('synthetic:item');assert.equal(first.notifications['-1'].messageId,1);assert.equal(first.notifications['12345'].messageId,2)
+ await probe({available:true,quantity:2});await service.deliverNotifications()
+ assert.deepEqual(calls.slice(2).map(call=>[call.method,call.chat_id,call.message_id]),[['editMessageText','-1',1],['editMessageText','12345',2]])
+ await probe({available:false,quantity:0});await service.deliverNotifications();assert.equal(calls.length,6)
+ await probe({available:true,quantity:4});await service.deliverNotifications();assert.equal(calls.length,8);assert.ok(calls.slice(6).every(call=>call.method==='sendMessage'))
+ await service.deliverNotifications();assert.equal(calls.length,8)
+}))
+
+test('个人投递失败独立重试，不重复频道；个人单目标和去重兼容',()=>fixture(async({store,service,probe})=>{
+ const settings=store.getSettings();Object.assign(settings.telegram,{channelEnabled:true,personalEnabled:true,personalChatId:'12345',notificationMode:'all'});store.setSettings(settings)
+ const sent=[];let failPersonal=true
+ globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);sent.push(body);return {json:async()=>body.chat_id==='12345'&&failPersonal?{ok:false,error_code:503,description:'temporary failure'}:{ok:true,result:{message_id:sent.length}}}}
+ await probe({available:false,quantity:0});await probe({available:true,quantity:3});await service.deliverNotifications()
+ assert.equal(store.listNotifications().length,1);assert.equal(store.listNotifications()[0].recipientChatId,'12345')
+ failPersonal=false;const job=store.listNotifications()[0];store.putNotification({...job,nextAttemptAt:new Date(0).toISOString()});await service.deliverNotifications()
+ assert.equal(sent.filter(call=>call.chat_id==='-1').length,1);assert.equal(sent.filter(call=>call.chat_id==='12345').length,2);assert.equal(store.listNotifications().length,0)
+ settings.telegram.channelEnabled=false;store.setSettings(settings);await probe({available:true,quantity:2});await service.deliverNotifications();assert.equal(sent.at(-1).chat_id,'12345');assert.equal(sent.length,4)
+ settings.telegram.channelEnabled=true;settings.telegram.chatId='12345';store.setSettings(settings);await probe({available:true,quantity:1});await service.deliverNotifications();assert.equal(sent.length,5)
+}))

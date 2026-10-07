@@ -24,3 +24,10 @@ export async function telegramCall(settings, method, payload, {now=Date.now()}={
   if (!result.ok) { const error = new Error(result.description || "Telegram 请求失败"); error.retryAfter = result.parameters?.retry_after; error.permanent = [400,401,403,404].includes(result.error_code ?? response.status); throw error; }
   return result.result;
 }
+
+export function telegramTargets(settings) {
+  const targets=[];
+  if(settings.channelEnabled!==false&&settings.chatId)targets.push({kind:'channel',chatId:String(settings.chatId).trim()});
+  if(settings.personalEnabled&&settings.personalChatId)targets.push({kind:'personal',chatId:String(settings.personalChatId).trim()});
+  return targets.filter((target,index)=>target.chatId&&targets.findIndex(other=>other.chatId===target.chatId)===index);
+}

@@ -8,7 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { createDatabase } from "@vps-monitor/db";
-import { createService, bootstrapProviders, encryptToken, tokenKey, formatCard, telegramCall, repositoryMatches, monitored, validateQuietHours } from "@vps-monitor/core";
+import { createService, bootstrapProviders, encryptToken, tokenKey, formatCard, telegramCall, telegramTargets, repositoryMatches, monitored, validateQuietHours } from "@vps-monitor/core";
 
 const host=process.env.HOST||"127.0.0.1",port=Number(process.env.PORT||4173);
 const root=resolve(fileURLToPath(new URL("../../..",import.meta.url)));
@@ -29,13 +29,17 @@ function settingsPatch(input,settings){
   for(const section of ["telegram","updates"]){
     if(input[section]===undefined)continue;
     const value=input[section];if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("设置必须是对象");
-    const allowed=section==="telegram"?["botToken","chatId","enabled","showBuyLink","notificationMode","notifyNewPlans","quietHours"]:["repository","branch"];
+    const allowed=section==="telegram"?["botToken","chatId","personalChatId","channelEnabled","personalEnabled","enabled","showBuyLink","notificationMode","notifyNewPlans","quietHours"]:["repository","branch"];
     if(Object.keys(value).some(key=>!allowed.includes(key)))throw new Error("未知或只读设置字段");
     for(const [key,item] of Object.entries(value)){
       if(key==="quietHours"){validateQuietHours(item,settings.telegram.quietHours);}
       else if(key==="notificationMode"){if(!["restock","all"].includes(item))throw new Error("通知模式必须为 restock 或 all");}
-      else if(["enabled","showBuyLink","notifyNewPlans"].includes(key)){if(typeof item!=="boolean")throw new Error(`${key} 必须是布尔值`);}
+      else if(["enabled","showBuyLink","notifyNewPlans","channelEnabled","personalEnabled"].includes(key)){if(typeof item!=="boolean")throw new Error(`${key} 必须是布尔值`);}
       else if(typeof item!=="string"||item.length>500)throw new Error(`${key} 必须是长度不超过 500 的字符串`);
+    }
+    if(section==='telegram'){
+      if(value.personalChatId!==undefined&&value.personalChatId!==''&&!/^[1-9]\d{0,19}$/.test(value.personalChatId))throw new Error('个人 User ID 必须是正整数');
+      if(value.chatId!==undefined&&value.chatId!==''&&!/^(?:-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{4,31})$/.test(value.chatId))throw new Error('频道 Chat ID 格式不正确');
     }
     if(section==="telegram"){
       const {botToken,quietHours,...visible}=value;Object.assign(settings.telegram,visible);
@@ -80,7 +84,8 @@ async function api(req,res,url){const p=url.pathname.split("/").filter(Boolean);
   if(req.method==="GET"&&url.pathname==="/api/settings")return json(res,200,maskedSettings());
   if(req.method==="PUT"&&url.pathname==="/api/settings"){try{const input=await body(req),settings=store.getSettings();settingsPatch(input,settings);store.setSettings(settings);return json(res,200,maskedSettings());}catch(e){return json(res,400,{error:e.message});}}
   if(req.method==="POST"&&url.pathname==="/api/telegram/preview"){const input=await body(req),settings=store.getSettings().telegram;return json(res,200,{text:formatCard(samplePlan(input.plan||{}),settings,["sold_out","stock_changed"].includes(input.status)?input.status:"restocked")});}
-  if(req.method==="POST"&&url.pathname==="/api/telegram/test"){try{const t=store.getSettings().telegram;if(!t.chatId)throw new Error("请先填写频道 Chat ID");await telegramCall(t,"sendMessage",{chat_id:t.chatId,text:"✅ VPS Monitor Telegram 连通性测试成功",disable_web_page_preview:true});return json(res,200,{ok:true});}catch(e){return json(res,400,{error:e.message});}}
+  if(req.method==="POST"&&url.pathname==="/api/telegram/test"){try{const input=await body(req),t=store.getSettings().telegram;if(input.target&&!['channel','personal'].includes(input.target))throw new Error('未知测试目标');const targets=telegramTargets(t).filter(target=>!input.target||target.kind===input.target);if(!targets.length)throw new Error('请先保存并开启对应通知目标');const results=await Promise.all(targets.map(async target=>{try{await telegramCall(t,'sendMessage',{chat_id:target.chatId,text:'✅ VPS Monitor Telegram 连通性测试成功',disable_web_page_preview:true});return {target:target.kind,ok:true}}catch(e){return {target:target.kind,ok:false,error:e.message}}}));if(results.every(result=>!result.ok))return json(res,400,{error:results.map(result=>result.error).join('；'),results});return json(res,200,{ok:results.every(result=>result.ok),results});}catch(e){return json(res,400,{error:e.message});}}
+
   if(req.method==="GET"&&url.pathname==="/api/updates/status")return json(res,200,await updateStatus());
   if(req.method==="GET"&&url.pathname==="/api/updates/progress")return json(res,200,updater.getStatus());
   if(req.method==="POST"&&url.pathname==="/api/updates/apply"){

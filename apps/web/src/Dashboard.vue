@@ -44,7 +44,7 @@ async function runMonitor(id){try{await api(`/api/monitors/${id}/run`,{method:'P
 function removeMonitor(id){Object.assign(removeDialog,{open:true,id,busy:false})}
 async function confirmRemove(){removeDialog.busy=true;try{await api(`/api/monitors/${removeDialog.id}`,{method:'DELETE'});removeDialog.open=false;await refresh();tip('监控任务已删除')}catch(e){tip(e.message,true)}finally{removeDialog.busy=false}}
 async function saveTelegram(x){try{await api('/api/settings',{method:'PUT',body:JSON.stringify({telegram:x})});await loadSettings();tip('Telegram 设置已保存')}catch(e){tip(e.message,true)}}
-async function testTelegram(){try{await api('/api/telegram/test',{method:'POST',body:'{}'});tip('测试消息已发送')}catch(e){tip(e.message,true)}}
+async function testTelegram(target){try{const result=await api('/api/telegram/test',{method:'POST',body:JSON.stringify({target})});if(result.ok)tip('测试消息已发送');else tip(result.results.filter(item=>!item.ok).map(item=>`${item.target==='personal'?'个人私聊':'频道'}：${item.error}`).join('；'),true)}catch(e){tip(e.message,true)}}
 async function applyUpdate(){
  if(updateDialog.phase==='running')return
  Object.assign(updateDialog,{phase:'running',error:'',status:{state:'checking',progress:0,message:'正在确认更新版本…'}})
