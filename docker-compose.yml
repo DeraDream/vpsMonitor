@@ -1,0 +1,12 @@
+services:
+  vps-monitor:
+    build: .
+    container_name: vps-monitor
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4173:4173"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set in .env}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set in .env}
+    volumes:
+      - ./data:/app/data

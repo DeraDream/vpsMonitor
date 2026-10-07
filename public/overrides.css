@@ -1,0 +1,60 @@
+.update-section {
+  margin-top: 20px;
+}
+
+.button-pair {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.modal-plans {
+  margin: 20px 0;
+  max-height: 55dvh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+}
+
+.dialog-card {
+  width: min(840px, calc(100vw - 32px));
+}
+
+.preview-label {
+  margin: 18px 0 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.preview-label + .preview {
+  margin-top: 0;
+}
+
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.monitor-card {
+  min-height: 146px;
+}
+
+.monitor-plans {
+  max-height: 230px;
+  overflow: auto;
+  margin: 14px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.signal.off {
+  background: #8492a6;
+  box-shadow: none;
+}
