@@ -55,6 +55,19 @@ try {
   const monitor = await created.json()
   assert.equal((await request(`/api/monitors/${monitor.id}/run`, 'POST', {})).status, 400)
   assert.equal((await request('/api/settings', 'PUT', { telegram: { botToken: 'release-fake-token', chatId: '-1' } })).status, 200)
+  const oldCookie=cookie
+  const passwordChanged=await request('/api/auth/password','POST',{currentPassword:'release-test-password',newPassword:'release-new-password',confirmPassword:'release-new-password'})
+  assert.equal(passwordChanged.status,200);cookie=passwordChanged.headers.get('set-cookie').split(';')[0]
+  assert.equal((await fetch(base+'/api/dashboard',{headers:{Cookie:oldCookie}})).status,401)
+  assert.equal((await request('/api/dashboard')).status,200)
+  await stop(api)
+  const restarted=spawn(process.execPath,['apps/api/src/server.mjs'],{cwd:bundle,env,stdio:'ignore'});children.push(restarted)
+  let restartedReady=false
+  for(let i=0;i<100;i++){try{if((await request('/api/auth/session')).ok){restartedReady=true;break}}catch{}await new Promise(resolve=>setTimeout(resolve,50))}
+  assert.ok(restartedReady,'密码修改后的 API 重启失败')
+  assert.equal((await request('/api/dashboard')).status,200)
+  assert.equal((await request('/api/auth/login','POST',{username:'admin',password:'release-test-password'})).status,401)
+  const newLogin=await request('/api/auth/login','POST',{username:'admin',password:'release-new-password'});assert.equal(newLogin.status,200);cookie=newLogin.headers.get('set-cookie').split(';')[0]
   const worker = spawn(process.execPath, ['apps/worker/src/worker.mjs'], { cwd: bundle, env, stdio: 'ignore' }); children.push(worker)
   let heartbeat = false
   for (let i = 0; i < 100; i++) { if ((await (await request('/api/dashboard')).json()).runtime.lastTickAt) { heartbeat = true; break } await new Promise(resolve => setTimeout(resolve, 50)) }
@@ -62,7 +75,7 @@ try {
   const release = JSON.parse(await readFile(join(bundle, 'release-manifest.json'), 'utf8'))
   assert.equal(release.version, version); assert.equal(release.builtLocally, true)
   const result = { version, filename, sha256: digest, verified: true,
-    checks: ['SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '解压后 Worker 心跳'] }
+    checks: ['SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '密码修改、旧会话失效及 API 重启后新密码有效', '解压后 Worker 心跳'] }
   await writeFile(join(root, 'releases/verification.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify(result, null, 2))
 } finally { for (const child of children.reverse()) await stop(child); await rm(dir, { recursive: true, force: true }) }

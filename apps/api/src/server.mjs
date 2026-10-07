@@ -49,7 +49,7 @@ function settingsPatch(input,settings){
   }
   return settings;
 }
-function maskedSettings(){const settings=store.getSettings(),telegram={...settings.telegram,botTokenConfigured:Boolean(settings.telegram.botTokenEncrypted)};delete telegram.botTokenEncrypted;delete telegram.botToken;return {telegram,updates:settings.updates,security:{passwordProtected:Boolean(process.env.ADMIN_PASSWORD),tokenEncryptionConfigured:Boolean(tokenKey())}};}
+function maskedSettings(){const settings=store.getSettings(),telegram={...settings.telegram,botTokenConfigured:Boolean(settings.telegram.botTokenEncrypted)};delete telegram.botTokenEncrypted;delete telegram.botToken;return {telegram,updates:settings.updates,security:{passwordProtected:auth.isEnabled(),tokenEncryptionConfigured:Boolean(tokenKey())}};}
 const marketTypes=new Set(["new_plan","restocked","sold_out","stock_changed","delisted"]);
 function marketEvents(){return store.listEvents(500,[...marketTypes]);}
 const publicPlanFields=new Set(["id","providerId","externalId","categoryId","categoryName","sourceUrl","listed","name","specs","cpu","ram","nvme","ipv4","ipv6","backups","runtime","storage","storageType","bandwidth","portSpeed","os","controlPanel","virtualization","description","availabilitySource","configuration","price","billingCycle","location","buyUrl","tags","available","quantity","observedAt"]);
