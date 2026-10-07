@@ -6,7 +6,7 @@ on:
       - refactor/vue-api-worker
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -41,3 +41,12 @@ jobs:
           test -f Dockerfile
           test -f docker-compose.yml
           test -f deploy/install.sh
+      - name: Materialize validated refactor on branch
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/vps-monitor-refactor/. .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: split Vue frontend API and worker"
+          git push origin HEAD:refactor/vue-api-worker
