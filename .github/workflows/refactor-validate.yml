@@ -13,10 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unpack refactor candidate
+      - name: Rebuild refactor candidate
         run: |
           mkdir -p /tmp/vps-monitor-refactor
-          tar -xzf .refactor/vpsMonitor-refactor.tar.gz -C /tmp/vps-monitor-refactor
+          cat .refactor/chunk*.b64 | base64 -d > /tmp/vps-monitor-refactor.tar.gz
+          tar -xzf /tmp/vps-monitor-refactor.tar.gz -C /tmp/vps-monitor-refactor
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
