@@ -1,17 +1,18 @@
 import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { getAdapter } from "./lib/adapters.mjs";
 import { normalizePlan, reconcilePlan, nextRetry } from "./lib/monitor-engine.mjs";
+import { repositoryMatches } from "./lib/update-policy.mjs";
 
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "127.0.0.1";
-const version = "0.1.0";
+const version = "1.0";
 const root = process.cwd();
-const dataDir = join(root, "data");
+const dataDir = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(root, "data");
 const dataFile = join(dataDir, "store.json");
 
 const seed = {
@@ -130,8 +131,11 @@ function updateStatus() {
   try {
     const localRevision = git(["rev-parse", "HEAD"]);
     const dirty = git(["status", "--porcelain"]);
+    const originUrl = git(["remote", "get-url", "origin"]);
+    if (!repositoryMatches(settings.repository, originUrl)) return { ...base, localRevision, deployReady: false, message: "设置页的 GitHub 仓库与本地 origin 不一致，已拒绝在线更新。" };
+    if (dirty) return { ...base, localRevision, deployReady: false, message: "工作目录有未提交修改，不能在线更新。" };
     const remoteRevision = git(["ls-remote", "origin", `refs/heads/${settings.branch}`]).split(/\s+/)[0] || null;
-    return { ...base, localRevision, remoteRevision, updateAvailable: Boolean(remoteRevision && remoteRevision !== localRevision), deployReady: !dirty, message: dirty ? "工作目录有未提交修改，不能在线更新。" : remoteRevision && remoteRevision !== localRevision ? "发现新版本，可以在线更新。" : "已是最新版本。" };
+    return { ...base, localRevision, remoteRevision, updateAvailable: Boolean(remoteRevision && remoteRevision !== localRevision), deployReady: true, message: remoteRevision && remoteRevision !== localRevision ? "发现新版本，可以在线更新。" : "已是最新版本。" };
   } catch (error) {
     const detail = error.stderr?.trim() || error.message;
     if (detail.includes("unknown revision") || detail.includes("ambiguous argument 'HEAD'")) return { ...base, message: "当前代码尚未首次提交。首次推送到 GitHub 后即可检查更新。" };
@@ -343,7 +347,7 @@ async function api(req, res, url) {
     const monitor = store.monitors.find((item) => item.id === parts[2]);
     if (!monitor) return json(res, 404, { error: "未找到监控任务" });
     try { await runMonitor(monitor); await deliverNotifications(); await save(); return json(res, 200, monitorView(monitor)); }
-    catch (error) { monitor.lastError = error.message; monitor.consecutiveFailures = (monitor.consecutiveFailures || 0) + 1; monitor.lastRunAt = new Date().toISOString(); await save(); return json(res, 400, { error: error.message }); }
+    catch (error) { monitor.lastError = error.message; monitor.consecutiveFailures = (monitor.consecutiveFailures || 0) + 1; monitor.lastRunAt = new Date().toISOString(); addEvent("monitor_failed", `${monitorView(monitor).providerName}：${error.message}`, { providerId: monitor.providerId, error: error.message }); await save(); return json(res, 400, { error: error.message }); }
   }
   if (req.method === "DELETE" && parts[0] === "api" && parts[1] === "monitors" && parts[2]) {
     if (!store.monitors.some((item) => item.id === parts[2])) return json(res, 404, { error: "未找到监控任务" });
