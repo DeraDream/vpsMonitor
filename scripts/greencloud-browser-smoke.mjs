@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict'
+import {spawn} from 'node:child_process'
+import {once} from 'node:events'
+import {mkdtemp,rm,readFile,writeFile} from 'node:fs/promises'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {pathToFileURL} from 'node:url'
+import {createDatabase} from '../packages/db/src/database.mjs'
+import {normalizePlan} from '../packages/core/src/monitor-engine.mjs'
+import {parseCategories,parseProducts} from '../packages/adapters/src/greencloud/index.mjs'
+const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href),dir=await mkdtemp(join(tmpdir(),'vps-green-browser-')),store=createDatabase(dir)
+const fixture=name=>readFile(new URL(`../packages/adapters/src/greencloud/fixtures/${name}.html`,import.meta.url),'utf8')
+const categories=parseCategories(await fixture('catalog'))
+store.putProvider({id:'greencloud',name:'GreenCloud',adapterKey:'greencloud',dynamicCategories:true,categories,defaultIntervalSeconds:300})
+const first=parseProducts(await fixture('budget-kvm-sale'),categories[0]);for(let i=0;i<28;i++)store.putPlan(normalizePlan(i<3?first[i]:{...first[1],externalId:categories[0].id+':'+(90000+i),name:'Future Plan '+i,location:i%2?'Staten Island, NY':'Ashburn, VA'},'greencloud'))
+const managed=categories.find(c=>c.id==='managed-windows-vps');for(const p of parseProducts(await fixture(managed.id),managed))store.putPlan(normalizePlan(p,'greencloud'))
+store.putMonitor({id:'g',providerId:'greencloud',scope:'all',enabled:false,planIds:[],intervalSeconds:300,categoryStatuses:Object.fromEntries(categories.map(c=>[c.id,{lastSuccessAt:new Date().toISOString()}]))})
+const port=58000+Math.floor(Math.random()*1000),base=`http://127.0.0.1:${port}`,child=spawn(process.execPath,['apps/api/src/server.mjs'],{env:{...process.env,DATA_DIR:dir,DISABLE_BUILTIN_PROVIDERS:'1',ADMIN_PASSWORD:'green-test',HOST:'127.0.0.1',PORT:String(port)},stdio:'ignore'})
+const results=[],errors=[];let browser
+async function check(name,fn){await fn();results.push({name,result:'PASS'})}
+try{
+ for(let i=0;i<100;i++){try{if((await fetch(base+'/api/auth/session')).ok)break}catch{}await new Promise(r=>setTimeout(r,40))}
+ browser=await chromium.launch({headless:true,args:['--no-sandbox']});const context=await browser.newContext({viewport:{width:1440,height:900}}),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message))
+ await page.goto(base);await page.getByLabel('密码',{exact:true}).fill('green-test');await page.getByRole('button',{name:'登录控制台'}).click();await page.locator('.provider-card').waitFor()
+ await check('19 个分类使用下拉而非挤满商家卡片',async()=>{assert.equal(await page.locator('.provider-category-picker option').count(),19);assert.equal(await page.locator('.provider-categories button').count(),0);await page.getByRole('button',{name:'查看分类套餐'}).click();await page.locator('.plan-card').first().waitFor();assert.equal(await page.getByLabel('套餐分类').locator('option').count(),19)})
+ await check('分类分页与明确库存展示',async()=>{assert.equal(await page.locator('.plan-card').count(),20);assert.ok((await page.locator('.plan-card').first().textContent()).includes('库存：0 台'));assert.ok((await page.locator('.plan-card').first().textContent()).includes('缺货'));await page.getByRole('button',{name:'下一页'}).click();assert.equal(await page.locator('.plan-card').count(),8)})
+ await check('地区筛选和配置搜索',async()=>{await page.getByLabel('地区',{exact:true}).selectOption('Ashburn, VA');assert.ok(await page.locator('.plan-card').count()>0);await page.getByPlaceholder('搜索套餐名称、配置').fill('Future Plan 4');assert.equal(await page.locator('.plan-card').count(),1);assert.ok((await page.locator('.plan-card').textContent()).includes('Future Plan 4'));await page.getByPlaceholder('搜索套餐名称、配置').fill('nonexistent');await page.getByText('没有匹配的套餐，请调整搜索或地区。').waitFor()})
+ await check('切换分类清除旧筛选并区分不公开库存',async()=>{await page.getByLabel('套餐分类').selectOption(managed.id);assert.equal(await page.locator('.plan-card').count(),2);assert.ok((await page.locator('.plan-card').first().textContent()).includes('可订购 · 数量未公开'));assert.ok((await page.locator('.plan-card').first().textContent()).includes('1Gbps'));assert.equal(await page.getByPlaceholder('搜索套餐名称、配置').inputValue(),'')})
+ await check('官网明确空分类显示无公开套餐',async()=>{await page.getByLabel('套餐分类').selectOption('mac-mini-dedicated');await page.getByText('该分类当前没有公开套餐。').waitFor();await page.getByRole('button',{name:'关闭',exact:true}).click()})
+ await check('指定分类监控保存，动态计数正确',async()=>{await page.getByRole('button',{name:'编辑监控'}).click();await page.locator('.monitor-plan-choice').first().waitFor();await page.locator('input[type=radio][value=categories]').check();await page.locator('.category-checks input[value="budget-kvm-sale"]').check();await page.getByRole('button',{name:'保存任务'}).click();await page.getByText('监控任务已保存',{exact:true}).waitFor();assert.equal(store.getMonitor('g').scope,'categories');assert.deepEqual(store.getMonitor('g').categoryIds,['budget-kvm-sale']);await page.locator('nav').getByRole('link',{name:'监控',exact:true}).click();await page.getByText(/已选分类 · 28 个套餐/).waitFor()})
+ await check('套餐选择跨分页和跨分类保留',async()=>{await page.getByRole('button',{name:'编辑',exact:true}).click();await page.locator('.monitor-plan-choice').first().waitFor();await page.locator('.monitor-plans input').first().check();await page.getByRole('button',{name:'下一页'}).click();await page.locator('.monitor-plans input').first().check();await page.getByLabel('套餐分类').selectOption(managed.id);await page.locator('.monitor-plans input').first().check();await page.getByRole('button',{name:'保存任务'}).click();await page.getByText('监控任务已保存',{exact:true}).waitFor();assert.equal(store.getMonitor('g').planIds.length,3);assert.equal(store.getMonitor('g').scope,'selected')})
+ for(const width of [1024,768,390,320])await check(`${width}px 商家卡片与多分类编辑弹窗适配`,async()=>{await page.setViewportSize({width,height:900});await page.locator('nav').getByRole('link',{name:'商家',exact:true}).click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.getByRole('button',{name:'编辑监控'}).click();await page.locator('.monitor-plan-choice').first().waitFor();await page.locator('input[type=radio][value=categories]').check();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await page.locator('.dialog-card').evaluate(e=>e.scrollWidth<=e.clientWidth));await page.getByRole('button',{name:'取消',exact:true}).click()})
+ await page.setViewportSize({width:1440,height:900});await page.getByRole('button',{name:'查看分类套餐'}).click();await page.locator('.plan-card').first().waitFor();await page.screenshot({path:'/tmp/greencloud-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/greencloud-mobile.png',fullPage:true})
+ await check('无 Vue 或浏览器运行异常',async()=>assert.deepEqual(errors,[]))
+ console.log(JSON.stringify({results,errors},null,2));await writeFile('/tmp/greencloud-browser-results.json',JSON.stringify({results,errors},null,2))
+}finally{await browser?.close();if(child.exitCode===null){const done=once(child,'exit');child.kill('SIGTERM');await done}store.close();await rm(dir,{recursive:true,force:true})}

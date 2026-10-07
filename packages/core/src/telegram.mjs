@@ -2,7 +2,7 @@ import { decryptToken } from "./crypto.mjs";
 export function escapeHtml(value) { return String(value).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]); }
 function escapeAttr(value) { return escapeHtml(value).replace(/"/g, "&quot;"); }
 export function formatCard(plan, telegramSettings, status = "restocked") {
-  const lines = [status === "sold_out" ? "🔴 <b>售罄</b>" : "🟢 <b>补货提醒</b>", "", plan.categoryName ? `🗂 ${escapeHtml(plan.categoryName)}` : "", `📦 <b>${escapeHtml(plan.name)}</b>`,
+  const lines = [status === "sold_out" ? "🔴 <b>售罄</b>" : plan.availabilitySource==="order-button"?"🟢 <b>可订购提醒</b>":"🟢 <b>补货提醒</b>", "", plan.categoryName ? `🗂 ${escapeHtml(plan.categoryName)}` : "", `📦 <b>${escapeHtml(plan.name)}</b>`,
     plan.price ? `💰 ${escapeHtml(plan.price)}${plan.billingCycle ? ` / ${escapeHtml(plan.billingCycle)}` : ""}` : "",
     plan.location ? `📍 ${escapeHtml(plan.location)}` : "", plan.specs ? `💻 ${escapeHtml(plan.specs)}` : "",
     Number.isInteger(plan.quantity) ? `📦 库存：${plan.quantity} 台` : "", status === "sold_out" ? "📦 本次补货已售罄" : "",

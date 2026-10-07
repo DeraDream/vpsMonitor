@@ -147,3 +147,24 @@ test('页面上架下架、单页失败与恢复：只更新完整成功系列�
   assert.match(store.getMonitor(monitorId).categoryStatuses.ryzen.lastError, /network unavailable/)
   assert.match(store.getMonitor(monitorId).categoryStatuses.kvm.lastError, /network unavailable/)
 }))
+
+test('套餐公共模型保存官网所有配置：CPU/RAM/NVMe/IPv4/IPv6/Backups/周期和新增字段', async () => {
+  const { normalizePlan } = await import('../packages/core/src/monitor-engine.mjs')
+  for (const [html, category] of [[ryzen,categories[0]],[kvm,categories[1]]]) {
+    const plans=parsePackages(html,category)
+    for(const plan of plans){
+      const normalized=normalizePlan(plan,'bero-host')
+      for(const key of ['cpu','ram','nvme','ipv4','ipv6','backups','runtime'])assert.equal(normalized[key],plan[key])
+      assert.equal(plan.ipv4,'1 Adresse');assert.equal(plan.ipv6,'1 /64 Netz');assert.equal(plan.backups,'3 Slots');assert.equal(plan.runtime,'365 Tage')
+      assert.equal(normalized.configuration.length,7)
+      assert.deepEqual(normalized.configuration,plan.configuration)
+    }
+  }
+  const $=load(ryzen),card=$('[wire\\:click]').first()
+  card.find('span.me-2').each((_,span)=>{if($(span).text().trim().startsWith('Backups'))$(span).parent().find('.ms-auto').text('7 Slots')})
+  card.find('.default-package-background').append('<div><span class="me-2">Traffic:</span><span class="ms-auto">15 TB</span></div>')
+  const changed=normalizePlan(parsePackages($.html(),categories[0])[0],'bero-host')
+  assert.equal(changed.backups,'7 Slots');assert.ok(changed.configuration.some(row=>row.label==='Traffic'&&row.value==='15 TB'))
+  const english=parsePackages(ryzen.replaceAll('Laufzeit:','Runtime:'),categories[0])[0];assert.equal(english.runtime,'365 Tage')
+  const legacy=normalizePlan({externalId:'old',name:'old',available:false,specs:'2C / 2GB'},'legacy');assert.equal(legacy.ipv4,'');assert.deepEqual(legacy.configuration,[]);assert.equal(legacy.specs,'2C / 2GB')
+})

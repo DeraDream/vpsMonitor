@@ -17,11 +17,12 @@ export function parsePackages(html, category) {
     const body = card.find(".default-package-background").first();
     const name = clean(body.find("h4").first().text());
     const price = clean(body.find("h5").first().clone().find("small").remove().end().text());
-    const fields = {};
+    const fields = {}, configuration = [];
     body.find("span.me-2").each((_, span) => {
-      const label = clean($(span).text()).replace(/:$/, "").toLowerCase();
+      const displayLabel = clean($(span).text()).replace(/:$/, "").trim();
+      const label = displayLabel.toLowerCase();
       const value = clean($(span).parent().find("span.ms-auto").text());
-      if (label && value) fields[label] = value;
+      if (label && value) { fields[label] = value; configuration.push({label: displayLabel, value}); }
     });
     if (!name || !/\d[\d.,]*\s*€/.test(price) || !fields.cpu || !fields.ram || !fields.nvme)
       throw new Error(`${category.name}：套餐 ${packageId} 结构不完整，保留上次状态`);
@@ -38,6 +39,8 @@ export function parsePackages(html, category) {
     plans.push({
       externalId: `${category.id}:${packageId}`, categoryId: category.id, categoryName: category.name,
       name, available: !unavailable, quantity: null,
+      cpu: fields.cpu, ram: fields.ram, nvme: fields.nvme,
+      ipv4: fields.ipv4 || "", ipv6: fields.ipv6 || "", backups: fields.backups || "", runtime, configuration,
       specs: `CPU ${fields.cpu} / RAM ${fields.ram} / NVMe ${fields.nvme}`,
       price, billingCycle: days === "365" ? "year" : days ? `${days} days` : runtime,
       location: /Frankfurt/i.test($("body").text()) ? "DE · Frankfurt" : "",

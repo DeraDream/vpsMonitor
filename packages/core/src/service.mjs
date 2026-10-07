@@ -1,22 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { getAdapter } from "@vps-monitor/adapters";
-import { normalizePlan, reconcilePlan, nextRetry } from "./monitor-engine.mjs";
+import { normalizePlan, reconcilePlan, nextRetry, monitored } from "./monitor-engine.mjs";
 import { formatCard, telegramCall } from "./telegram.mjs";
 
 export function createService(store) {
   const addEvent = (type,message,extra={}) => store.addEvent({id:`event_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),type,message,...extra});
   function monitorView(monitor) {
     const provider=store.getProvider(monitor.providerId);
-    return {...monitor,providerName:provider?.name||"已移除商家",providerAdapterKey:provider?.adapterKey||"unknown",planCount:monitor.scope==="all"?store.listPlans(monitor.providerId).filter(p=>p.listed!==false).length:monitor.planIds.length,categories:(provider?.categories||[]).map(category=>{const plans=store.listPlans(monitor.providerId).filter(p=>p.listed!==false&&p.categoryId===category.id);return {...category,...monitor.categoryStatuses?.[category.id],planCount:plans.length,inStock:plans.filter(p=>p.available).length}})};
+    return {...monitor,providerName:provider?.name||"已移除商家",providerAdapterKey:provider?.adapterKey||"unknown",planCount:store.listPlans(monitor.providerId).filter(p=>p.listed!==false&&monitored(p,monitor)).length,categories:(provider?.categories||[]).map(category=>{const plans=store.listPlans(monitor.providerId).filter(p=>p.listed!==false&&p.categoryId===category.id);return {...category,...monitor.categoryStatuses?.[category.id],planCount:plans.length,inStock:plans.filter(p=>p.available&&p.availabilitySource!=="order-button").length,orderable:plans.filter(p=>p.available&&p.availabilitySource==="order-button").length}})};
   }
   function validateMonitor(input, existingId=null) {
     const provider=store.getProvider(input.providerId); if(!provider) throw new Error("请选择已接入的商家");
     const same=store.getMonitorByProvider(provider.id); if(same && same.id!==existingId) throw new Error("该商家已有监控任务，请直接编辑现有任务");
-    const scope=input.scope==="selected"?"selected":"all";
+    const scope=["selected","categories"].includes(input.scope)?input.scope:"all";
+    const categoryIds=[...new Set(Array.isArray(input.categoryIds)?input.categoryIds.filter(id=>typeof id==="string"):[])];
+    const categorySet=new Set((provider.categories||[]).map(category=>category.id));
+    if(scope==="categories"&&(!categoryIds.length||categoryIds.some(id=>!categorySet.has(id))))throw new Error("请选择该商家的有效分类");
     const planIds=[...new Set(Array.isArray(input.planIds)?input.planIds.filter(id=>typeof id==="string"):[])];
     const valid=new Set(store.listPlans(provider.id).map(p=>p.id)); if(planIds.some(id=>!valid.has(id))) throw new Error("包含不属于该商家的套餐");
     if(scope==="selected"&&!planIds.length) throw new Error("请选择至少一个套餐，或改为监控全部套餐");
-    return {providerId:provider.id,scope,planIds,intervalSeconds:Math.max(30,Math.min(3600,Number(input.intervalSeconds)||60)),enabled:Boolean(input.enabled)};
+    return {providerId:provider.id,scope,planIds,categoryIds,intervalSeconds:Math.max(30,Math.min(3600,Number(input.intervalSeconds)||60)),enabled:Boolean(input.enabled)};
   }
   function enqueue(action, plan, monitor) {
     const t=store.getSettings().telegram;
@@ -78,17 +81,20 @@ export function createService(store) {
     const current=batch.plans.map(plan=>normalizePlan(plan,provider.id));
     return store.transaction(()=>{
       const active=store.getMonitor(monitor.id);if(!active)throw new Error("监控任务已删除");
+      if(Array.isArray(batch.categories))store.putProvider({...provider,categories:[...batch.categories,...(provider.categories||[]).filter(category=>!batch.categories.some(next=>next.id===category.id)).map(category=>({...category,retired:true}))]});
       const observedAt=new Date().toISOString();
       // Only complete, successfully parsed pages may change their visible listing.
-      const present=new Set(current.map(plan=>plan.id));
+      const present=new Set(current.map(plan=>plan.id)),catalogCategories=Array.isArray(batch.categories)?new Set(batch.categories.map(category=>category.id)):null;
       for(const previous of store.listPlans(provider.id)){
-        if(batch.completedCategories.includes(previous.categoryId)&&!present.has(previous.id))store.putPlan({...previous,listed:false,listingCheckedAt:observedAt});
+        if((catalogCategories&&!catalogCategories.has(previous.categoryId))||(batch.completedCategories.includes(previous.categoryId)&&!present.has(previous.id)))store.putPlan({...previous,listed:false,listingCheckedAt:observedAt});
       }
+      const baselineCategories=new Set(Object.entries(active.categoryStatuses||{}).filter(([,status])=>status.lastSuccessAt).map(([id])=>id));
       active.categoryStatuses={...active.categoryStatuses};
       for(const categoryId of batch.completedCategories)active.categoryStatuses[categoryId]={lastSuccessAt:observedAt,lastAttemptAt:observedAt,lastError:null};
       for(const failure of batch.failures){active.categoryStatuses[failure.categoryId]={...active.categoryStatuses[failure.categoryId],lastAttemptAt:observedAt,lastError:failure.error};addEvent("monitor_category_failed",`${provider.name} · ${failure.categoryName}：${failure.error}`,{providerId:provider.id,categoryId:failure.categoryId});}
       for(const plan of current){
-        const result=reconcilePlan(store.getPlan(plan.id),plan,active);
+        const previous=store.getPlan(plan.id),result=reconcilePlan(previous,plan,active);
+        if(!previous&&provider.notifyOnFirstDiscovery===false&&!baselineCategories.has(plan.categoryId))result.action=null;
         if(result.action==="restocked")result.next.notificationCycle=randomUUID();
         result.next.observedAt=observedAt;store.putPlan(result.next);
         if(result.action){addEvent(result.action,`${plan.name}：${result.reason}`,{providerId:provider.id,planId:plan.id});enqueue(result.action,result.next,active);}

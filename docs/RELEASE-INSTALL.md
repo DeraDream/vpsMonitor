@@ -1,12 +1,12 @@
 # Release 安装包
 
-本地构建并上传 GitHub Release 的 `vps-monitor-1.3.0-linux-x64.tar.gz` 包含前端成品、API、Worker、生产依赖和 systemd 配置。不包含 Node.js、Git 元数据、数据库、密码或 Telegram Token。
+本地构建并上传 GitHub Release 的 `vps-monitor-1.4.0-linux-x64.tar.gz` 包含前端成品、API、Worker、生产依赖和 systemd 配置。不包含 Node.js、Git 元数据、数据库、密码或 Telegram Token。
 
 要求 Linux x64、Node.js 22.5+。下载 tar.gz 和 SHA256SUMS 到同一目录后：
 
 ```bash
 sha256sum -c SHA256SUMS
-tar -xzf vps-monitor-1.3.0-linux-x64.tar.gz
+tar -xzf vps-monitor-1.4.0-linux-x64.tar.gz
 cd vps-monitor-1.3.0
 ```
 
@@ -24,7 +24,7 @@ node --env-file=.env apps/api/src/server.mjs
 node --env-file=.env apps/worker/src/worker.mjs
 ```
 
-默认监听 127.0.0.1:4173；访问用户名 admin，密码使用 .env 中配置的值。外部访问需配置反向代理或 SSH 转发。
+默认监听 127.0.0.1:4173；独立登录页使用 ADMIN_USERNAME（默认 admin）和 ADMIN_PASSWORD。登录会话有效期七天，退出登录立即失效。HTTPS 反向代理部署应设置 AUTH_ORIGIN 为实际完整访问地址，以正确校验来源并启用 Secure Cookie。外部访问需配置反向代理或 SSH 转发。
 
 ## systemd 安装
 
@@ -43,3 +43,5 @@ sudo systemctl restart vps-monitor-api vps-monitor-worker
 升级前停止 API 和 Worker，并备份 data 目录及环境配置。下载新版本的本地构建包、验证校验和、解压并再次执行安装脚本，然后重启服务。必须保留原 TOKEN_ENCRYPTION_KEY，否则已有加密 Telegram Token 无法解密。
 
 Release 安装包没有 `.git`，页面中的 Git 在线更新不可用；通过新安装包升级。源码 Git 安装仍可使用 Git 更新。本次发布不生成或推送 Docker / GHCR 镜像。
+
+安装包无需 `.git`；版本状态通过 GitHub Release 检查，不会执行源码拉取。发现新版本后，使用发布包更新。

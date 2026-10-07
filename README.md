@@ -1,6 +1,6 @@
-# VPS Monitor 1.3.0
+# VPS Monitor 1.4.0
 
-个人 VPS 补货监控后台，使用 **Vue 前端 + API + Worker + SQLite**。1.3.0 接入 Bero Host 的 Ryzen / KVM 套餐动态监控，按系列分开展示，并修复通知队列、设置及 Worker 重启问题。
+个人 VPS 补货监控后台，使用 **Vue 前端 + API + Worker + SQLite**。支持 Bero Host 的 Ryzen / KVM 套餐和 GreenCloud 的动态分类、库存监控，提供独立登录页、配置详情、地区筛选和 Telegram 通知。
 
 ## 架构
 
@@ -21,7 +21,7 @@ Browser -> Vue 3 (静态构建)
 - `apps/api`：HTTP API、静态前端、手动探测、设置和在线更新
 - `apps/worker`：定时探测与 Telegram 重试
 - `packages/core`：套餐状态机、通知、加密与业务服务
-- `packages/adapters`：商家 Adapter 注册中心
+- `packages/adapters`：商家 Adapter 注册中心；每个商家独立文件夹（`src/bero-host`、`src/greencloud`）
 - `packages/db`：SQLite 持久化与旧 `store.json` 自动迁移
 
 Node.js 要求 **22.5+**（使用内置 `node:sqlite`）。
@@ -173,3 +173,7 @@ npm run check
 npm test
 npm run build:web
 ```
+
+## GreenCloud
+
+绿云从公开商店导航动态发现分类和套餐；数量为零判为缺货，未公开数量时标为可订购，不编造库存。首轮建立库存基线，后续补货和新套餐再通知。默认每 300 秒运行，最多两个并发请求；支持全店、指定分类或指定套餐监控。更多说明见 [docs/GREENCloud.md](docs/GREENCloud.md)。

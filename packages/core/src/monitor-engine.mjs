@@ -13,6 +13,8 @@ export function normalizePlan(input, providerId) {
     listed: input.listed !== false,
     name: String(input.name),
     specs: input.specs ? String(input.specs) : "",
+    ...Object.fromEntries(["cpu", "ram", "nvme", "ipv4", "ipv6", "backups", "runtime", "storage", "storageType", "bandwidth", "portSpeed", "os", "controlPanel", "virtualization", "description", "availabilitySource"].map(field => [field, input[field] == null ? "" : String(input[field]).trim()])),
+    configuration: Array.isArray(input.configuration) ? input.configuration.filter(row => row && typeof row.label === "string" && typeof row.value === "string" && row.label.trim() && row.value.trim()).map(row => ({label: row.label.trim(), value: row.value.trim()})) : [],
     price: input.price ? String(input.price) : "",
     billingCycle: input.billingCycle ? String(input.billingCycle) : "",
     location: input.location ? String(input.location) : "",
@@ -22,7 +24,7 @@ export function normalizePlan(input, providerId) {
     quantity
   };
 }
-export function monitored(plan, monitor) { return monitor.scope === "all" || monitor.planIds.includes(plan.id); }
+export function monitored(plan, monitor) { return monitor.scope === "all" || (monitor.scope === "categories" ? (monitor.categoryIds||[]).includes(plan.categoryId) : monitor.planIds.includes(plan.id)); }
 export function reconcilePlan(previous, next, monitor) {
   if (!previous) return { next: { ...next, notification: null }, action: next.available && monitored(next, monitor) ? "restocked" : null, reason: "首次发现" };
   const notification = previous.notification || null;

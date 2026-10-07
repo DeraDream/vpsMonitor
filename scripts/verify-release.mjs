@@ -29,18 +29,20 @@ try {
     db.putProvider({ id: 'release-fixture', name: 'Release fixture', adapterKey: 'not-installed' })
     const settings = db.getSettings(); settings.updates.repository = ''; db.setSettings(settings)
   } finally { db.close() }
-  execFileSync(process.execPath, ['--input-type=module', '-e', "import {getAdapter} from '@vps-monitor/adapters';if(!getAdapter('bero-host'))process.exit(1)"], { cwd: bundle })
+  execFileSync(process.execPath, ['--input-type=module', '-e', "import {getAdapter} from '@vps-monitor/adapters';if(!getAdapter('bero-host')||!getAdapter('greencloud'))process.exit(1)"], { cwd: bundle })
   const port = 55000 + Math.floor(Math.random() * 1000)
   const env = { ...process.env, DISABLE_BUILTIN_PROVIDERS: '1', DATA_DIR: join(dir, 'test-data'), HOST: '127.0.0.1', PORT: String(port), ADMIN_PASSWORD: 'release-test-password', TOKEN_ENCRYPTION_KEY: 'release-test-key', WORKER_TICK_MS: '500' }
   const api = spawn(process.execPath, ['apps/api/src/server.mjs'], { cwd: bundle, env, stdio: 'ignore' }); children.push(api)
-  const base = `http://127.0.0.1:${port}`, auth = `Basic ${Buffer.from('admin:release-test-password').toString('base64')}`
+  const base = `http://127.0.0.1:${port}`; let cookie=''
   async function request(path, method = 'GET', body) {
-    return fetch(base + path, { method, headers: { Authorization: auth, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+    return fetch(base + path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
   }
   let ready = false
-  for (let i = 0; i < 100; i++) { try { if ((await request('/api/dashboard')).status === 200) { ready = true; break } } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
+  for (let i = 0; i < 100; i++) { try { if ((await fetch(base+'/api/auth/session')).status === 200) { ready = true; break } } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
   assert.ok(ready, '解压后的 API 未能启动')
-  assert.equal((await fetch(base + '/api/dashboard')).status, 401)
+  const anonymous=await fetch(base+'/api/dashboard');assert.equal(anonymous.status,401);assert.equal(anonymous.headers.has('www-authenticate'),false)
+  const login=await request('/api/auth/login','POST',{username:'admin',password:'release-test-password'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0]
+  const update=await (await request('/api/updates/status')).json();assert.equal(update.mode,'release')
   assert.equal((await (await request('/api/dashboard')).json()).version, version)
   const html = await (await request('/')).text(), asset = html.match(/src="([^"]+\.js)"/)?.[1]
   assert.ok(asset, '发布包缺少前端构建入口')
@@ -57,7 +59,7 @@ try {
   const release = JSON.parse(await readFile(join(bundle, 'release-manifest.json'), 'utf8'))
   assert.equal(release.version, version); assert.equal(release.builtLocally, true)
   const result = { version, filename, sha256: digest, verified: true,
-    checks: ['SHA256', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及认证', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '解压后 Worker 心跳'] }
+    checks: ['SHA256', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '解压后 Worker 心跳'] }
   await writeFile(join(root, 'releases/verification.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify(result, null, 2))
 } finally { for (const child of children.reverse()) await stop(child); await rm(dir, { recursive: true, force: true }) }

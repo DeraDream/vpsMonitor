@@ -1,0 +1,322 @@
+
+> vps-monitor@1.3.2 test
+> node --test
+
+TAP version 13
+# (node:125) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 登录会话：无弹窗、错误密码、持久化、过期、退出、来源校验与限流
+ok 1 - 登录会话：无弹窗、错误密码、持久化、过期、退出、来源校验与限流
+  ---
+  duration_ms: 271.051376
+  type: 'test'
+  ...
+# (node:153) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 实际页面样本：两个系列各五个套餐，售罄与有货逐卡判断
+ok 2 - 实际页面样本：两个系列各五个套餐，售罄与有货逐卡判断
+  ---
+  duration_ms: 27.790398
+  type: 'test'
+  ...
+# Subtest: 自动发现任意新名称、ID 和数量，不写死五个套餐
+ok 3 - 自动发现任意新名称、ID 和数量，不写死五个套餐
+  ---
+  duration_ms: 16.651446
+  type: 'test'
+  ...
+# Subtest: 英文 Sold out 与德文标记等价
+ok 4 - 英文 Sold out 与德文标记等价
+  ---
+  duration_ms: 12.346881
+  type: 'test'
+  ...
+# Subtest: 套餐名称包含售罄文字不会被当成状态标记
+ok 5 - 套餐名称包含售罄文字不会被当成状态标记
+  ---
+  duration_ms: 4.945288
+  type: 'test'
+  ...
+# Subtest: 套餐顺序变化不改变 ID，非套餐配置按钮不会被解析
+ok 6 - 套餐顺序变化不改变 ID，非套餐配置按钮不会被解析
+  ---
+  duration_ms: 11.5476
+  type: 'test'
+  ...
+# Subtest: 重复 ID、空页面、字段缺失和不明确库存样式拒绝解析
+ok 7 - 重复 ID、空页面、字段缺失和不明确库存样式拒绝解析
+  ---
+  duration_ms: 19.271859
+  type: 'test'
+  ...
+# Subtest: 请求只读取两个商品页，使用超时；失败系列不会阻断成功系列
+ok 8 - 请求只读取两个商品页，使用超时；失败系列不会阻断成功系列
+  ---
+  duration_ms: 4.625658
+  type: 'test'
+  ...
+# Subtest: 非 HTML 响应、两页失败均返回明确错误，不伪装成缺货
+ok 9 - 非 HTML 响应、两页失败均返回明确错误，不伪装成缺货
+  ---
+  duration_ms: 0.416663
+  type: 'test'
+  ...
+# Subtest: 分组工具和 TG 消息保留系列，空系列仍独立显示
+ok 10 - 分组工具和 TG 消息保留系列，空系列仍独立显示
+  ---
+  duration_ms: 3.597727
+  type: 'test'
+  ...
+# Subtest: 内置商家自动创建全部监控，暂停和删除不会在启动时被重置
+ok 11 - 内置商家自动创建全部监控，暂停和删除不会在启动时被重置
+  ---
+  duration_ms: 5.258296
+  type: 'test'
+  ...
+# Subtest: 页面上架下架、单页失败与恢复：只更新完整成功系列，保留历史状态
+ok 12 - 页面上架下架、单页失败与恢复：只更新完整成功系列，保留历史状态
+  ---
+  duration_ms: 37.262189
+  type: 'test'
+  ...
+# Subtest: 套餐公共模型保存官网所有配置：CPU/RAM/NVMe/IPv4/IPv6/Backups/周期和新增字段
+ok 13 - 套餐公共模型保存官网所有配置：CPU/RAM/NVMe/IPv4/IPv6/Backups/周期和新增字段
+  ---
+  duration_ms: 13.575268
+  type: 'test'
+  ...
+# (node:165) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 旧 store.json 自动迁移到 SQLite 且保留监控数据
+ok 14 - 旧 store.json 自动迁移到 SQLite 且保留监控数据
+  ---
+  duration_ms: 4.298032
+  type: 'test'
+  ...
+# Subtest: 统一套餐模型拒绝无效状态
+ok 15 - 统一套餐模型拒绝无效状态
+  ---
+  duration_ms: 0.460816
+  type: 'test'
+  ...
+# Subtest: 补货周期仅在缺货转有货时创建新通知
+ok 16 - 补货周期仅在缺货转有货时创建新通知
+  ---
+  duration_ms: 0.131056
+  type: 'test'
+  ...
+# Subtest: 库存减少和售罄编辑当前卡片
+ok 17 - 库存减少和售罄编辑当前卡片
+  ---
+  duration_ms: 0.064621
+  type: 'test'
+  ...
+# Subtest: 重试采用有上限的指数退避
+ok 18 - 重试采用有上限的指数退避
+  ---
+  duration_ms: 0.194725
+  type: 'test'
+  ...
+# (node:183) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 模拟完整补货周期：补货发送、库存变化编辑、售罄编辑、再次补货新消息
+ok 19 - 模拟完整补货周期：补货发送、库存变化编辑、售罄编辑、再次补货新消息
+  ---
+  duration_ms: 14.34829
+  type: 'test'
+  ...
+# Subtest: 已售罄的积压补货通知应取消
+ok 20 - 已售罄的积压补货通知应取消
+  ---
+  duration_ms: 3.203025
+  type: 'test'
+  ...
+# Subtest: 关闭 TG 后积压队列应停止发送
+ok 21 - 关闭 TG 后积压队列应停止发送
+  ---
+  duration_ms: 1.740288
+  type: 'test'
+  ...
+# Subtest: 两个投递者不能发送同一 job 两次
+ok 22 - 两个投递者不能发送同一 job 两次
+  ---
+  duration_ms: 3.039859
+  type: 'test'
+  ...
+# Subtest: 删除任务后待投递通知应停止发送
+ok 23 - 删除任务后待投递通知应停止发送
+  ---
+  duration_ms: 1.443861
+  type: 'test'
+  ...
+# Subtest: Telegram message is not modified 应视为投递成功
+ok 24 - Telegram message is not modified 应视为投递成功
+  ---
+  duration_ms: 2.013843
+  type: 'test'
+  ...
+# Subtest: Telegram 标签需要转义 HTML
+ok 25 - Telegram 标签需要转义 HTML
+  ---
+  duration_ms: 0.160883
+  type: 'test'
+  ...
+# Subtest: 两个独立数据库连接的投递者只能发送一次
+ok 26 - 两个独立数据库连接的投递者只能发送一次
+  ---
+  duration_ms: 1.813226
+  type: 'test'
+  ...
+# Subtest: 通知暂停保留任务，重新启用后发送
+ok 27 - 通知暂停保留任务，重新启用后发送
+  ---
+  duration_ms: 1.796635
+  type: 'test'
+  ...
+# Subtest: 多次未发送补货周期仅发送当前周期
+ok 28 - 多次未发送补货周期仅发送当前周期
+  ---
+  duration_ms: 2.146883
+  type: 'test'
+  ...
+# Subtest: 积压售罄编辑保留旧周期 messageId，下一周期独立发送
+ok 29 - 积压售罄编辑保留旧周期 messageId，下一周期独立发送
+  ---
+  duration_ms: 2.247101
+  type: 'test'
+  ...
+# Subtest: 发送期间售罄不会覆盖最新状态，随后补发售罄编辑
+ok 30 - 发送期间售罄不会覆盖最新状态，随后补发售罄编辑
+  ---
+  duration_ms: 1.926608
+  type: 'test'
+  ...
+# Subtest: 探测期间删除任务不会重新创建任务
+ok 31 - 探测期间删除任务不会重新创建任务
+  ---
+  duration_ms: 1.318817
+  type: 'test'
+  ...
+# Subtest: Telegram 403 永久错误停止重试并记录原因
+ok 32 - Telegram 403 永久错误停止重试并记录原因
+  ---
+  duration_ms: 2.051443
+  type: 'test'
+  ...
+# Subtest: 安装包不依赖 Git：相同、新版、旧版、异常版本与无发布
+ok 33 - 安装包不依赖 Git：相同、新版、旧版、异常版本与无发布
+  ---
+  duration_ms: 0.922313
+  type: 'test'
+  ...
+# Subtest: API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作
+ok 34 - API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作
+  ---
+  duration_ms: 242.375123
+  type: 'test'
+  ...
+# (node:222) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: SQLite 重开持久化、500 条事件上限、迁移重复启动不覆盖已有数据
+ok 35 - SQLite 重开持久化、500 条事件上限、迁移重复启动不覆盖已有数据
+  ---
+  duration_ms: 47.328737
+  type: 'test'
+  ...
+# Subtest: Token 加解密、随机 IV、篡改密文和错误密钥拒绝
+ok 36 - Token 加解密、随机 IV、篡改密文和错误密钥拒绝
+  ---
+  duration_ms: 0.912223
+  type: 'test'
+  ...
+# Subtest: 通知租约未过期不能抢占，过期可恢复；旧持有者不能确认新任务
+ok 37 - 通知租约未过期不能抢占，过期可恢复；旧持有者不能确认新任务
+  ---
+  duration_ms: 2.255347
+  type: 'test'
+  ...
+# Subtest: 迁移旧明文 Token 后归档文件不应保留明文
+ok 38 - 迁移旧明文 Token 后归档文件不应保留明文
+  ---
+  duration_ms: 2.175236
+  type: 'test'
+  ...
+# Subtest: 缺少加密密钥时迁移拒绝且保留原文件，配置密钥后可重试
+ok 39 - 缺少加密密钥时迁移拒绝且保留原文件，配置密钥后可重试
+  ---
+  duration_ms: 2.169564
+  type: 'test'
+  ...
+# Subtest: Worker 启动前已有重启标记应正常退出
+ok 40 - Worker 启动前已有重启标记应正常退出
+  ---
+  duration_ms: 83.217627
+  type: 'test'
+  ...
+# Subtest: Worker 运行中收到重启标记应正常退出
+ok 41 - Worker 运行中收到重启标记应正常退出
+  ---
+  duration_ms: 580.545498
+  type: 'test'
+  ...
+# Subtest: 更新源只接受与设置一致的 GitHub origin
+ok 42 - 更新源只接受与设置一致的 GitHub origin
+  ---
+  duration_ms: 0.459433
+  type: 'test'
+  ...
+# Subtest: 更新检查：一致来源、脏目录拒绝、来源不一致拒绝、缺失分支
+    # Subtest: 不存在的远端分支应拒绝部署
+    ok 1 - 不存在的远端分支应拒绝部署
+      ---
+      duration_ms: 7.036257
+      type: 'test'
+      ...
+    1..1
+ok 43 - 更新检查：一致来源、脏目录拒绝、来源不一致拒绝、缺失分支
+  ---
+  duration_ms: 170.328799
+  type: 'test'
+  ...
+# (node:320) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: API 编辑、删除、校验、事件查询和重启持久化；Worker 心跳
+    # Subtest: 错误 JSON 应返回 400
+    ok 1 - 错误 JSON 应返回 400
+      ---
+      duration_ms: 1.883417
+      type: 'test'
+      ...
+    # Subtest: TG enabled 必须是布尔值
+    ok 2 - TG enabled 必须是布尔值
+      ---
+      duration_ms: 1.388808
+      type: 'test'
+      ...
+    # Subtest: TG 密文不能由客户端直接覆盖
+    ok 3 - TG 密文不能由客户端直接覆盖
+      ---
+      duration_ms: 1.46417
+      type: 'test'
+      ...
+    1..3
+ok 44 - API 编辑、删除、校验、事件查询和重启持久化；Worker 心跳
+  ---
+  duration_ms: 875.445116
+  type: 'test'
+  ...
+# Subtest: Telegram 429 保留队列并遵守 retry_after，成功后移除；不发送真实消息
+ok 45 - Telegram 429 保留队列并遵守 retry_after，成功后移除；不发送真实消息
+  ---
+  duration_ms: 3.106365
+  type: 'test'
+  ...
+1..45
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2978.097566

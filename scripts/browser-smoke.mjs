@@ -21,7 +21,7 @@ const results = [], errors = []
 let browser
 async function check(name, fn) { try { await fn(); results.push({ name, result: 'PASS' }) } catch (e) { results.push({ name, result: 'FAIL', error: e.message }) } }
 try {
-  for (let i = 0; i < 100; i++) { try { if ((await fetch(base)).status === 401) break } catch {} await new Promise(r => setTimeout(r, 50)) }
+  for (let i = 0; i < 100; i++) { try { if ((await fetch(base+'/api/dashboard')).status === 401) break } catch {} await new Promise(r => setTimeout(r, 50)) }
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ httpCredentials: { username: 'admin', password: 'browser-password' }, viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
@@ -29,11 +29,15 @@ try {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.route('**/api/updates/status', route => route.fulfill({ json: { configured: true, message: 'Isolated browser test', deployReady: false, updateAvailable: false } }))
   await page.goto(base)
+  await page.getByLabel('用户名',{exact:true}).fill('admin')
+  await page.getByLabel('密码',{exact:true}).fill('browser-password')
+  await page.getByRole('button',{name:'登录控制台'}).click()
   await check('概览加载和版本显示', async () => { await page.getByRole('heading', { name: '实时状态' }).waitFor(); await page.getByText(`v${version}`, { exact: true }).waitFor() })
   await check('过期心跳应显示离线', async () => { assert.equal(await page.getByText('监控服务运行中', { exact: true }).count(), 0) })
   await page.locator('nav').getByRole('link', { name: '监控', exact: true }).click()
   await check('浏览器创建监控', async () => {
     await page.getByRole('button', { name: '添加监控', exact: true }).click()
+    await page.getByLabel('1. 选择商家').selectOption('fixture')
     await page.getByRole('button', { name: '保存任务' }).click()
     await page.locator('.monitor-card').waitFor()
     assert.equal(store.listMonitors().length, 1)

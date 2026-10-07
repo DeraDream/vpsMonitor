@@ -28,13 +28,16 @@ const results = [], errors = []
 let browser
 async function check(name, fn) { try { await fn(); results.push({ name, result: 'PASS' }) } catch (error) { results.push({ name, result: 'FAIL', error: error.message }) } }
 try {
-  for (let i = 0; i < 100; i++) { try { if ((await fetch(base)).status === 401) break } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
+  for (let i = 0; i < 100; i++) { try { if ((await fetch(base+'/api/dashboard')).status === 401) break } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ httpCredentials: { username: 'admin', password: 'bero-browser-password' }, viewport: { width: 1440, height: 1000 } })
   const page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto(base)
+  await page.getByLabel('用户名',{exact:true}).fill('admin')
+  await page.getByLabel('密码',{exact:true}).fill('bero-browser-password')
+  await page.getByRole('button',{name:'登录控制台'}).click()
   const ryzenButton = () => page.locator('.provider-categories').getByRole('button', { name: /Ryzen VPS/ })
   const kvmButton = () => page.locator('.provider-categories').getByRole('button', { name: /KVM Rootserver/ })
   await check('商家卡片分别显示两个系列入口', async () => { await ryzenButton().waitFor(); assert.equal(await page.locator('.provider-categories button').count(), 2) })
@@ -50,7 +53,7 @@ try {
     const panel = page.getByRole('tabpanel', { name: 'KVM Rootserver' }); await panel.waitFor()
     assert.equal(await panel.locator('.plan-card').count(), 5)
     assert.equal(await panel.locator('.plan-card .status.available').count(), 0)
-    assert.ok((await panel.textContent()).includes('RAM 12 GB'))
+    assert.ok(await panel.getByText('12 GB',{exact:true}).count())
     assert.equal(await page.getByRole('tabpanel', { name: 'Ryzen VPS' }).count(), 0)
   })
   await page.screenshot({ path: '/tmp/bero-kvm-desktop.png', fullPage: true })
@@ -61,7 +64,7 @@ try {
     await page.getByRole('button', { name: '关闭', exact: true }).click()
   })
   await check('新任务默认监听所有系列，而非写死十个 ID', async () => {
-    await page.getByRole('button', { name: '编辑监控' }).click()
+    await page.locator('.provider-card').filter({has:page.getByRole('heading',{name:'Bero Host',exact:true})}).getByRole('button', { name: '编辑监控' }).click()
     await page.locator('.dialog-card').waitFor()
     assert.equal(await page.locator('input[type=radio][value=all]').isChecked(), true)
     assert.deepEqual(store.getMonitorByProvider('bero-host').planIds, [])
@@ -78,7 +81,7 @@ try {
     await page.getByText('监控任务已保存', { exact: true }).waitFor()
     const selected = store.getMonitorByProvider('bero-host')
     assert.equal(selected.scope, 'selected'); assert.equal(selected.planIds.length, 6)
-    await page.getByRole('button', { name: '编辑监控' }).click()
+    await page.locator('.provider-card').filter({has:page.getByRole('heading',{name:'Bero Host',exact:true})}).getByRole('button', { name: '编辑监控' }).click()
     await page.locator('input[type=radio][value=all]').check()
     await page.getByRole('button', { name: '保存任务' }).click()
     await page.waitForFunction(() => !document.querySelector('.dialog-card'))
