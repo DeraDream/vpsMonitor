@@ -1,9 +1,11 @@
 import { createServer } from "node:http";
 import { createAuth } from "./auth.mjs";
+import { createUpdateController } from "./update-runner.mjs";
 import { releaseStatus, isGitCheckout } from "./updates.mjs";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { createDatabase } from "@vps-monitor/db";
 import { createService, bootstrapProviders, encryptToken, tokenKey, formatCard, telegramCall, repositoryMatches, monitored, validateQuietHours } from "@vps-monitor/core";
@@ -16,6 +18,9 @@ const store=createDatabase(process.env.DATA_DIR||join(root,"data"));
 bootstrapProviders(store);
 const service=createService(store);
 
+const dataDir=resolve(process.env.DATA_DIR||join(root,"data"));
+const updater=createUpdateController({root,dataDir,version,workerActive:()=>Date.now()-Date.parse(store.getRuntime().lastTickAt||0)<30000});
+await updater.initialize();
 const auth=createAuth(store);
 function json(res,status,value){res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(status===204?"":JSON.stringify(value));}
 async function body(req){let raw="";for await(const c of req){raw+=c;if(raw.length>1_000_000){const error=new Error("请求体过大");error.status=413;throw error;}}try{const value=raw?JSON.parse(raw):{};if(!value||typeof value!=="object"||Array.isArray(value))throw new Error();return value;}catch{const error=new Error("请求体必须是有效 JSON 对象");error.status=400;throw error;}}
@@ -55,8 +60,9 @@ function publicCatalog(){
  return {version,providers,plans,events};
 }
 function dashboard(){const providers=store.listProviders(),monitors=store.listMonitors(),plans=store.listPlans().filter(p=>p.listed!==false),enabled=monitors.filter(m=>m.enabled);return {stats:{providers:providers.length,monitoredProviders:new Set(enabled.map(m=>m.providerId)).size,monitoredPlans:enabled.reduce((sum,m)=>sum+(plans.filter(p=>p.providerId===m.providerId&&monitored(p,m)).length),0),inStock:plans.filter(p=>p.available&&p.availabilitySource!=="order-button").length,orderable:plans.filter(p=>p.available&&p.availabilitySource==="order-button").length},version,providers,monitors:monitors.map(service.monitorView),runtime:{...store.getRuntime(),pendingNotifications:store.listNotifications().length},events:marketEvents().slice(0,12)};}
-function git(args){return execFileSync("git",args,{cwd:root,encoding:"utf8",timeout:20000,stdio:["ignore","pipe","pipe"]}).trim();}
-async function updateStatus(){if(!isGitCheckout(root))return releaseStatus(root,version,store.getSettings().updates);const settings=store.getSettings().updates,base={configured:Boolean(settings.repository),repository:settings.repository,branch:settings.branch,localRevision:null,remoteRevision:null,updateAvailable:false,deployReady:false,message:"尚未配置 GitHub 更新源。"};if(!settings.repository)return base;try{const localRevision=git(["rev-parse","HEAD"]),dirty=git(["status","--porcelain"]),originUrl=git(["remote","get-url","origin"]);if(!repositoryMatches(settings.repository,originUrl))return {...base,localRevision,message:"设置页的 GitHub 仓库与本地 origin 不一致，已拒绝在线更新。"};if(dirty)return {...base,localRevision,message:"工作目录有未提交修改，不能在线更新。"};const remoteRevision=git(["ls-remote","origin",`refs/heads/${settings.branch}`]).split(/\s+/)[0]||null;if(!remoteRevision)return {...base,localRevision,message:"远端发布分支不存在，已拒绝在线更新。"};return {...base,localRevision,remoteRevision,updateAvailable:Boolean(remoteRevision&&remoteRevision!==localRevision),deployReady:true,message:remoteRevision&&remoteRevision!==localRevision?"发现新版本，可以在线更新。":"已是最新版本。"};}catch(error){const detail=error.stderr?.trim()||error.message;return {...base,message:`无法检查更新：${detail}`};}}
+const execute=promisify(execFile);
+async function git(args){return (await execute("git",args,{cwd:root,encoding:"utf8",timeout:20000})).stdout.trim();}
+async function updateStatus(){if(!isGitCheckout(root))return releaseStatus(root,version,store.getSettings().updates);const settings=store.getSettings().updates,base={configured:Boolean(settings.repository),repository:settings.repository,branch:settings.branch,mode:"git",localVersion:version,localRevision:null,remoteRevision:null,updateAvailable:false,deployReady:false,message:"尚未配置 GitHub 更新源。"};if(!settings.repository)return base;try{const localRevision=await git(["rev-parse","HEAD"]),dirty=await git(["status","--porcelain"]),originUrl=await git(["remote","get-url","origin"]);if(!repositoryMatches(settings.repository,originUrl))return {...base,localRevision,message:"设置页的 GitHub 仓库与本地 origin 不一致，已拒绝在线更新。"};if(dirty)return {...base,localRevision,message:"工作目录有未提交修改，不能在线更新。"};const remoteRevision=(await git(["ls-remote","origin",`refs/heads/${settings.branch}`])).split(/\s+/)[0]||null;if(!remoteRevision)return {...base,localRevision,message:"远端发布分支不存在，已拒绝在线更新。"};return {...base,localRevision,remoteRevision,updateAvailable:Boolean(remoteRevision&&remoteRevision!==localRevision),deployReady:true,message:remoteRevision&&remoteRevision!==localRevision?"发现新版本，可以在线更新。":"已是最新版本。"};}catch(error){const detail=error.stderr?.trim()||error.message;return {...base,message:`无法检查更新：${detail}`};}}
 function samplePlan(input={}){return {name:"Anniversary S Ryzen VPS",price:"€39.00",billingCycle:"year",location:"DE · Frankfurt",specs:"2C / 6GB / 60GB",quantity:3,buyUrl:"https://example.com",tags:["bero","DE"],...input};}
 async function api(req,res,url){const p=url.pathname.split("/").filter(Boolean);
   if(req.method==="GET"&&url.pathname==="/api/dashboard")return json(res,200,dashboard());
@@ -76,7 +82,15 @@ async function api(req,res,url){const p=url.pathname.split("/").filter(Boolean);
   if(req.method==="POST"&&url.pathname==="/api/telegram/preview"){const input=await body(req),settings=store.getSettings().telegram;return json(res,200,{text:formatCard(samplePlan(input.plan||{}),settings,["sold_out","stock_changed"].includes(input.status)?input.status:"restocked")});}
   if(req.method==="POST"&&url.pathname==="/api/telegram/test"){try{const t=store.getSettings().telegram;if(!t.chatId)throw new Error("请先填写频道 Chat ID");await telegramCall(t,"sendMessage",{chat_id:t.chatId,text:"✅ VPS Monitor Telegram 连通性测试成功",disable_web_page_preview:true});return json(res,200,{ok:true});}catch(e){return json(res,400,{error:e.message});}}
   if(req.method==="GET"&&url.pathname==="/api/updates/status")return json(res,200,await updateStatus());
-  if(req.method==="POST"&&url.pathname==="/api/updates/apply"){const status=await updateStatus();if(!status.deployReady)return json(res,400,{error:status.message});if(!status.updateAvailable)return json(res,200,{message:"已是最新版本。"});try{git(["fetch","origin",store.getSettings().updates.branch]);git(["merge","--ff-only",`origin/${store.getSettings().updates.branch}`]);execFileSync("npm",["install"],{cwd:root,stdio:"pipe"});execFileSync("npm",["run","build:web"],{cwd:root,stdio:"pipe"});const dataDir=resolve(process.env.DATA_DIR||join(root,"data"));writeFileSync(join(dataDir,".restart-worker"),String(Date.now()));json(res,200,{message:"更新与前端构建已完成，服务即将重启。"});setTimeout(()=>process.exit(0),200);return;}catch(e){return json(res,400,{error:e.stderr?.trim()||e.message});}}
+  if(req.method==="GET"&&url.pathname==="/api/updates/progress")return json(res,200,updater.getStatus());
+  if(req.method==="POST"&&url.pathname==="/api/updates/apply"){
+    try{
+      const input=await body(req),status=await updateStatus();
+      if(!status.updateAvailable||!status.deployReady)return json(res,400,{error:status.message});
+      if(input.targetVersion&&input.targetVersion!==status.remoteVersion||input.remoteRevision&&input.remoteRevision!==status.remoteRevision)return json(res,409,{error:"远端版本已变化，请重新检查并确认"});
+      return json(res,202,await updater.start(status));
+    }catch(e){return json(res,e.status||400,{error:e.message});}
+  }
   return json(res,404,{error:"Not found"});
 }
 function mime(path){return ({".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".svg":"image/svg+xml",".json":"application/json; charset=utf-8"})[extname(path)]||"application/octet-stream";}

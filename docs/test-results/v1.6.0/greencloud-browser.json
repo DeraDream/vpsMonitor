@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "name": "19 个分类使用下拉而非挤满商家卡片",
+      "result": "PASS"
+    },
+    {
+      "name": "套餐浏览链接指向官网具体产品购买页",
+      "result": "PASS"
+    },
+    {
+      "name": "分类分页与明确库存展示",
+      "result": "PASS"
+    },
+    {
+      "name": "地区筛选和配置搜索",
+      "result": "PASS"
+    },
+    {
+      "name": "切换分类清除旧筛选并区分不公开库存",
+      "result": "PASS"
+    },
+    {
+      "name": "官网明确空分类显示无公开套餐",
+      "result": "PASS"
+    },
+    {
+      "name": "编辑监控有专属购买链接，指定分类保存及动态计数正确",
+      "result": "PASS"
+    },
+    {
+      "name": "套餐选择跨分页和跨分类保留",
+      "result": "PASS"
+    },
+    {
+      "name": "1024px 商家卡片与多分类编辑弹窗适配",
+      "result": "PASS"
+    },
+    {
+      "name": "768px 商家卡片与多分类编辑弹窗适配",
+      "result": "PASS"
+    },
+    {
+      "name": "390px 商家卡片与多分类编辑弹窗适配",
+      "result": "PASS"
+    },
+    {
+      "name": "320px 商家卡片与多分类编辑弹窗适配",
+      "result": "PASS"
+    },
+    {
+      "name": "无 Vue 或浏览器运行异常",
+      "result": "PASS"
+    }
+  ],
+  "errors": []
+}

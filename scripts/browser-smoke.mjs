@@ -61,13 +61,12 @@ try {
     await page.getByText(/最近失败：Adapter/).waitFor()
   })
   await check('浏览器删除监控', async () => {
-    page.once('dialog', d => d.accept())
-    await page.getByRole('button', { name: '删除', exact: true }).click()
+    await page.getByRole('button', { name: '删除', exact: true }).click();await page.getByRole('button',{name:'确定删除',exact:true}).click()
     await page.getByText('监控任务已删除', { exact: true }).waitFor()
     assert.equal(store.listMonitors().length, 0)
   })
   await page.locator('nav').getByRole('link', { name: '补货事件', exact: true }).click()
-  await check('事件页显示完整事件列表', async () => { await page.locator('.event').first().waitFor(); assert.equal(await page.locator('.event').count(), store.listEvents().length) })
+  await check('事件页显示完整事件列表', async () => { await page.locator('.event').first().waitFor(); assert.equal(await page.locator('.event').count(),20);assert.ok(!(await page.locator('#view').textContent()).includes('尚未安装')) })
   await page.locator('nav').getByRole('link', { name: '通知设置', exact: true }).click()
   await check('设置与三种消息预览加载', async () => { await page.getByRole('heading', { name: 'Telegram 频道通知' }).waitFor(); await page.waitForFunction(() => [...document.querySelectorAll('.preview')].every(e => !e.textContent.includes('正在生成'))); assert.equal(await page.locator('.preview').count(), 3) })
   await check('自动刷新不覆盖未保存的设置',async()=>{

@@ -14,3 +14,9 @@ test('安装包不依赖 Git：相同、新版、旧版、异常版本与无发�
  assert.match((await releaseStatus('/tmp','1.3.0',settings,async()=>{throw Error('timeout')})).message,/timeout/)
  assert.equal((await releaseStatus('/tmp','1.3.0',{repository:''})).configured,false)
 })
+test('完整正式发布包提供在线更新入口，缺失或外站附件不能在线安装',async()=>{
+ const version='1.6.0',name=`vps-monitor-${version}-linux-x64.tar.gz`,prefix=`https://github.com/${settings.repository}/releases/download/v${version}/`
+ const release={tag_name:'v'+version,html_url:`https://github.com/${settings.repository}/releases/tag/v${version}`,assets:[{name,browser_download_url:prefix+name},{name:'SHA256SUMS',browser_download_url:prefix+'SHA256SUMS'}]}
+ const fetcher=async()=>({ok:true,json:async()=>release});const ready=await releaseStatus('/tmp','1.5.0',settings,fetcher);assert.equal(ready.updateAvailable,true);assert.equal(ready.deployReady,true);assert.equal(ready.assets.filename,name)
+ release.assets[0].browser_download_url='https://evil.example/'+name;assert.equal((await releaseStatus('/tmp','1.5.0',settings,fetcher)).deployReady,false)
+});

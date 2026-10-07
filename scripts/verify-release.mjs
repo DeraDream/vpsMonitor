@@ -40,9 +40,11 @@ try {
   let ready = false
   for (let i = 0; i < 100; i++) { try { if ((await fetch(base+'/api/auth/session')).status === 200) { ready = true; break } } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
   assert.ok(ready, '解压后的 API 未能启动')
+  const progressAnonymous=await fetch(base+'/api/updates/progress');assert.equal(progressAnonymous.status,401);
   const publicResponse=await fetch(base+'/api/public/catalog');assert.equal(publicResponse.status,200);assert.equal((await publicResponse.json()).version,version);assert.equal((await fetch(base+'/admin')).status,200);
   const anonymous=await fetch(base+'/api/dashboard');assert.equal(anonymous.status,401);assert.equal(anonymous.headers.has('www-authenticate'),false)
   const login=await request('/api/auth/login','POST',{username:'admin',password:'release-test-password'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0]
+  assert.equal((await (await request('/api/updates/progress')).json()).state,'idle');
   const update=await (await request('/api/updates/status')).json();assert.equal(update.mode,'release')
   assert.equal((await (await request('/api/dashboard')).json()).version, version)
   const html = await (await request('/')).text(), asset = html.match(/src="([^"]+\.js)"/)?.[1]

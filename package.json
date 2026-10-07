@@ -1,6 +1,6 @@
 {
   "name": "vps-monitor",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -15,7 +15,7 @@
     "start:api": "npm --workspace @vps-monitor/api run start",
     "start:worker": "npm --workspace @vps-monitor/worker run start",
     "test": "node --test",
-    "check": "node --check apps/api/src/server.mjs && node --check apps/worker/src/worker.mjs && node --check packages/core/src/monitor-engine.mjs && node --check packages/core/src/service.mjs && node --check packages/db/src/database.mjs && node --check apps/api/src/auth.mjs && node --check apps/api/src/updates.mjs && node --check packages/adapters/src/greencloud/index.mjs && node --check packages/adapters/src/greencloud/parser.mjs && node --check packages/core/src/notification-policy.mjs",
+    "check": "node --check apps/api/src/server.mjs && node --check apps/worker/src/worker.mjs && node --check packages/core/src/monitor-engine.mjs && node --check packages/core/src/service.mjs && node --check packages/db/src/database.mjs && node --check apps/api/src/auth.mjs && node --check apps/api/src/updates.mjs && node --check packages/adapters/src/greencloud/index.mjs && node --check packages/adapters/src/greencloud/parser.mjs && node --check packages/core/src/notification-policy.mjs && node --check apps/api/src/update-runner.mjs",
     "package:release": "node scripts/package-release.mjs"
   },
   "engines": {

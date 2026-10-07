@@ -1,0 +1,16 @@
+{
+  "version": "1.6.0",
+  "serviceUser": 999,
+  "result": "PASS",
+  "checks": [
+    "以生产服务用户实际安装",
+    "Worker 暂停确认",
+    "SHA256 与真实发布包解压",
+    "现有部署备份",
+    "保留业务数据及登录配置",
+    "新 API 启动后进度完成",
+    "新 Worker 启动及新鲜心跳"
+  ]
+}
+(node:220559) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

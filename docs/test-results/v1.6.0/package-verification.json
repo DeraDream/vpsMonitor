@@ -1,0 +1,19 @@
+{
+  "version": "1.6.0",
+  "filename": "vps-monitor-1.6.0-linux-x64.tar.gz",
+  "sha256": "54c16a10ff30b2b313079a04a5911e12561b24c366cd3cef05f73f11be659c06",
+  "verified": true,
+  "checks": [
+    "SHA256",
+    "匿名公开库存及后台登录入口",
+    "排除凭据和业务数据",
+    "排除前端开发依赖",
+    "生产 Adapter 可加载",
+    "解压后 API 启动及会话认证（无弹窗）",
+    "无 Git 安装包版本检查",
+    "API 与前端版本一致",
+    "监控创建及错误反馈",
+    "Token 加密设置",
+    "解压后 Worker 心跳"
+  ]
+}

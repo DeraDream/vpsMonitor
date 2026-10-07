@@ -18,7 +18,7 @@ test('公开展示匿名可读，仅输出白名单，管理接口和写操作�
   let ready=false;for(let i=0;i<100;i++){try{if((await fetch(base+'/api/auth/session')).ok){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,40))}assert.ok(ready);
   const response=await fetch(base+'/api/public/catalog');assert.equal(response.status,200);const value=await response.json();assert.equal(value.providers.length,1);assert.equal(value.plans.length,1);assert.equal(value.events.length,1);
   assert.equal(value.events[0].type,'new_plan');assert.ok(!JSON.stringify(value).includes('private'));assert.equal(value.providers[0].adapterKey,undefined);assert.equal(value.events[0].error,undefined);
-  for(const path of ['/api/settings','/api/dashboard','/api/monitors','/api/providers','/api/events'])assert.equal((await fetch(base+path)).status,401);
+  for(const path of ['/api/settings','/api/dashboard','/api/monitors','/api/providers','/api/events','/api/updates/progress','/api/updates/status'])assert.equal((await fetch(base+path)).status,401);
   for(const method of ['POST','PUT','PATCH','DELETE'])assert.equal((await fetch(base+'/api/public/catalog',{method})).status,401);
   for(const path of ['/','/admin'])assert.equal((await fetch(base+path)).status,200);
   const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'public-test'})});assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0];
