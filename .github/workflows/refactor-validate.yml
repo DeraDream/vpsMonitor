@@ -1,0 +1,42 @@
+name: Refactor Validation
+
+on:
+  push:
+    branches:
+      - refactor/vue-api-worker
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack refactor candidate
+        run: |
+          mkdir -p /tmp/vps-monitor-refactor
+          tar -xzf .refactor/vpsMonitor-refactor.tar.gz -C /tmp/vps-monitor-refactor
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: /tmp/vps-monitor-refactor
+        run: npm install
+      - name: Static checks
+        working-directory: /tmp/vps-monitor-refactor
+        run: npm run check
+      - name: Tests
+        working-directory: /tmp/vps-monitor-refactor
+        run: npm test
+      - name: Vue production build
+        working-directory: /tmp/vps-monitor-refactor
+        run: npm run build:web
+      - name: Verify production artifacts
+        working-directory: /tmp/vps-monitor-refactor
+        run: |
+          test -f apps/web/dist/index.html
+          test -d apps/web/dist/assets
+          test -f Dockerfile
+          test -f docker-compose.yml
+          test -f deploy/install.sh
