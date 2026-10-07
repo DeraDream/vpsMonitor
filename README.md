@@ -22,8 +22,8 @@
 
    ```bash
    sha256sum -c SHA256SUMS
-   tar -xzf vps-monitor-1.7.0-linux-x64.tar.gz
-   cd vps-monitor-1.7.0
+   tar -xzf vps-monitor-1.7.1-linux-x64.tar.gz
+   cd vps-monitor-1.7.1
    sudo ./deploy/install-release.sh
    ```
 

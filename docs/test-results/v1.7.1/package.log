@@ -1,0 +1,11 @@
+
+> vps-monitor@1.7.1 package:release
+> node scripts/package-release.mjs
+
+
+added 51 packages in 551ms
+
+19 packages are looking for funding
+  run `npm fund` for details
+本地发布包：/root/vpsmonitor/releases/vps-monitor-1.7.1-linux-x64.tar.gz
+SHA256：e07dd8a96d3dded5b9c8772ee6b880eb21e55370877a5b23ccc14ab2add17bc5
