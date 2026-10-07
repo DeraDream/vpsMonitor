@@ -10,7 +10,7 @@ import { repositoryMatches } from "./lib/update-policy.mjs";
 
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "127.0.0.1";
-const version = "1.0";
+const version = "1.1";
 const root = process.cwd();
 const dataDir = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(root, "data");
 const dataFile = join(dataDir, "store.json");
@@ -27,9 +27,7 @@ const seed = {
       botToken: "",
       chatId: "",
       enabled: false,
-      showQuantity: true,
       showBuyLink: true,
-      soldoutMode: "edit",
       template: "standard"
     },
     updates: { repository: "DeraDream/vpsMonitor", branch: "main" }
@@ -50,6 +48,8 @@ async function load() {
   data.events = data.events || [];
   data.runtime = { ...seed.runtime, ...(data.runtime || {}) };
   data.settings = { ...seed.settings, ...(data.settings || {}), telegram: { ...seed.settings.telegram, ...(data.settings?.telegram || {}) }, updates: { ...seed.settings.updates, ...(data.settings?.updates || {}) } };
+  delete data.settings.telegram.showQuantity;
+  delete data.settings.telegram.soldoutMode;
   if (data.settings.telegram.botToken) {
     if (tokenKey()) data.settings.telegram.botTokenEncrypted = encryptToken(data.settings.telegram.botToken);
     delete data.settings.telegram.botToken;
@@ -152,7 +152,7 @@ function formatCard(plan, status = "restocked") {
     plan.price ? `💰 ${escapeHtml(plan.price)}${plan.billingCycle ? ` / ${escapeHtml(plan.billingCycle)}` : ""}` : "",
     plan.location ? `📍 ${escapeHtml(plan.location)}` : "",
     plan.specs ? `💻 ${escapeHtml(plan.specs)}` : "",
-    telegram.showQuantity && Number.isInteger(plan.quantity) ? `📦 库存：${plan.quantity} 台` : "",
+    Number.isInteger(plan.quantity) ? `📦 库存：${plan.quantity} 台` : "",
     status === "sold_out" ? "📦 本次补货已售罄" : "",
     telegram.showBuyLink && plan.buyUrl ? `🛒 <a href=\"${escapeAttr(plan.buyUrl)}\">立即购买</a>` : "",
     plan.tags?.length ? plan.tags.map((tag) => `#${tag}`).join(" ") : ""
@@ -240,7 +240,7 @@ async function deliverNotifications() {
         plan.notification = { chatId: String(store.settings.telegram.chatId), messageId: result.message_id, sentAt: new Date().toISOString() };
         addEvent("telegram_sent", `${plan.name}：已发送补货卡片`, { providerId: plan.providerId, planId: plan.id });
       } else if (job.action === "sold_out") {
-        if (store.settings.telegram.soldoutMode === "edit" && plan.notification?.messageId) {
+        if (plan.notification?.messageId) {
           await telegram("editMessageText", { chat_id: plan.notification.chatId, message_id: plan.notification.messageId, text: formatCard(plan, "sold_out"), parse_mode: "HTML", disable_web_page_preview: true });
           addEvent("telegram_edited", `${plan.name}：已编辑为售罄`, { providerId: plan.providerId, planId: plan.id });
         }

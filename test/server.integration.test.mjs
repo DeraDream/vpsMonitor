@@ -38,6 +38,10 @@ test("HTTP API 保护、监控任务、失败状态和 Token 加密可以协同�
     const denied = await fetch(`${base}/api/dashboard`);
     assert.equal(denied.status, 401);
 
+    const preview = await fetch(`${base}/api/telegram/preview`, { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ plan: { name: "No quantity", available: true, quantity: null, buyUrl: "" } }) });
+    assert.equal(preview.status, 200);
+    assert.doesNotMatch((await preview.json()).text, /库存：/);
+
     const create = await fetch(`${base}/api/monitors`, { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ providerId: "demo", scope: "all", enabled: true, intervalSeconds: 30 }) });
     assert.equal(create.status, 201);
     const monitor = await create.json();
@@ -55,6 +59,8 @@ test("HTTP API 保护、监控任务、失败状态和 Token 加密可以协同�
     const visible = await settings.json();
     assert.equal(visible.telegram.botTokenConfigured, true);
     assert.equal(Object.hasOwn(visible.telegram, "botToken"), false);
+    assert.equal(Object.hasOwn(visible.telegram, "showQuantity"), false);
+    assert.equal(Object.hasOwn(visible.telegram, "soldoutMode"), false);
 
     const stored = await readFile(join(dataDir, "store.json"), "utf8");
     assert.doesNotMatch(stored, /123456:real-looking-test-token/);
