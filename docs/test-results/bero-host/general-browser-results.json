@@ -1,0 +1,63 @@
+{
+  "results": [
+    {
+      "name": "概览加载和版本显示",
+      "result": "PASS"
+    },
+    {
+      "name": "过期心跳应显示离线",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器创建监控",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器编辑监控",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器手动探测失败反馈",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器删除监控",
+      "result": "PASS"
+    },
+    {
+      "name": "事件页显示完整事件列表",
+      "result": "PASS"
+    },
+    {
+      "name": "设置与两种消息预览加载",
+      "result": "PASS"
+    },
+    {
+      "name": "自动刷新不覆盖未保存的设置",
+      "result": "PASS"
+    },
+    {
+      "name": "保存 Telegram 设置",
+      "result": "PASS"
+    },
+    {
+      "name": "Token 保存后输入框应清空",
+      "result": "PASS"
+    },
+    {
+      "name": "购买链接开关保存后预览应同步",
+      "result": "PASS"
+    },
+    {
+      "name": "手机宽度无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "无未捕获的页面或 Vue 运行错误",
+      "result": "PASS"
+    }
+  ],
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+  ]
+}

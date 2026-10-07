@@ -4,5 +4,7 @@ node_modules
 apps/web/dist
 data
 .env
+.env.release
+releases
 *.log
 .DS_Store

@@ -1,0 +1,24 @@
+{
+  "observedAt": "2026-10-07T12:31:40.454Z",
+  "workerLastTickAt": "2026-10-07T12:31:52.343Z",
+  "enabled": true,
+  "scope": "all",
+  "intervalSeconds": 60,
+  "categories": [
+    {
+      "id": "ryzen",
+      "name": "Ryzen VPS",
+      "planCount": 5,
+      "inStock": 3,
+      "lastError": null
+    },
+    {
+      "id": "kvm",
+      "name": "KVM Rootserver",
+      "planCount": 5,
+      "inStock": 0,
+      "lastError": null
+    }
+  ],
+  "telegramConfigured": false
+}

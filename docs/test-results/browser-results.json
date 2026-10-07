@@ -1,0 +1,62 @@
+{
+  "results": [
+    {
+      "name": "概览加载和版本显示",
+      "result": "PASS"
+    },
+    {
+      "name": "过期心跳应显示离线",
+      "result": "FAIL",
+      "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "name": "浏览器创建监控",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器编辑监控",
+      "result": "FAIL",
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.dialog-card') to be visible\u001b[22m\n"
+    },
+    {
+      "name": "浏览器手动探测失败反馈",
+      "result": "PASS"
+    },
+    {
+      "name": "浏览器删除监控",
+      "result": "PASS"
+    },
+    {
+      "name": "事件页显示完整事件列表",
+      "result": "FAIL",
+      "error": "Expected values to be strictly equal:\n\n12 !== 21\n"
+    },
+    {
+      "name": "设置与两种消息预览加载",
+      "result": "PASS"
+    },
+    {
+      "name": "保存 Telegram 设置",
+      "result": "PASS"
+    },
+    {
+      "name": "Token 保存后输入框应清空",
+      "result": "FAIL",
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'browser-fake-token'\n- ''\n"
+    },
+    {
+      "name": "购买链接开关保存后预览应同步",
+      "result": "FAIL",
+      "error": "Expected values to be strictly equal:\n\ntrue !== false\n"
+    },
+    {
+      "name": "手机宽度无横向溢出",
+      "result": "FAIL",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))\n"
+    }
+  ],
+  "pageErrors": [
+    "DataCloneError: Failed to execute 'structuredClone' on 'Window': #<Object> could not be cloned.\n    at y (http://127.0.0.1:49286/assets/index-BTQXAnKW.js:18:15390)\n    at onClick (http://127.0.0.1:49286/assets/index-BTQXAnKW.js:18:20537)\n    at qt (http://127.0.0.1:49286/assets/index-BTQXAnKW.js:13:38)\n    at Pe (http://127.0.0.1:49286/assets/index-BTQXAnKW.js:13:108)\n    at HTMLButtonElement.s (http://127.0.0.1:49286/assets/index-BTQXAnKW.js:17:4470)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+  ]
+}

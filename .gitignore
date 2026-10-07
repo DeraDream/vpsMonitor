@@ -7,3 +7,6 @@ data/store.json.migrated
 data/.restart-worker
 .env
 .DS_Store
+
+/releases/
+.env.release

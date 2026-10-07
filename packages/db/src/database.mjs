@@ -1,6 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, existsSync, readFileSync, renameSync } from "node:fs";
+import { mkdirSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+
+import { encryptToken } from "../../core/src/crypto.mjs";
 
 const DEFAULT_SETTINGS = {
   telegram: { botTokenEncrypted: "", chatId: "", enabled: false, showBuyLink: true, template: "standard" },
@@ -16,12 +18,12 @@ export function createDatabase(dataDir = process.env.DATA_DIR || "./data") {
     CREATE INDEX IF NOT EXISTS idx_plans_provider ON plans(provider_id);
     CREATE TABLE IF NOT EXISTS monitors (id TEXT PRIMARY KEY, provider_id TEXT NOT NULL UNIQUE, payload TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, next_attempt_at TEXT NOT NULL, payload TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS notification_claims (id TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, at TEXT NOT NULL, payload TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_events_at ON events(at DESC);
     CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
-  seedSettings(db);
-  migrateLegacyStore(db, dir);
+  try { seedSettings(db); migrateLegacyStore(db, dir); } catch (error) { db.close(); throw error; }
   return new Store(db);
 }
 function seedSettings(db) {
@@ -44,9 +46,14 @@ function migrateLegacyStore(db, dir) {
     const settings = structuredClone(DEFAULT_SETTINGS);
     Object.assign(settings.updates, data.settings?.updates || {});
     Object.assign(settings.telegram, data.settings?.telegram || {});
+    if (settings.telegram.botToken) settings.telegram.botTokenEncrypted = encryptToken(settings.telegram.botToken);
     delete settings.telegram.botToken; delete settings.telegram.showQuantity; delete settings.telegram.soldoutMode;
     db.prepare("INSERT OR REPLACE INTO kv(key,value) VALUES ('settings',?)").run(JSON.stringify(settings));
     db.prepare("INSERT OR REPLACE INTO kv(key,value) VALUES ('runtime',?)").run(JSON.stringify({...{schedulerStartedAt:new Date().toISOString(),lastTickAt:null},...(data.runtime||{})}));
+    if (data.settings?.telegram?.botToken) {
+      data.settings.telegram = { ...settings.telegram };
+      writeFileSync(file, JSON.stringify(data), { mode: 0o600 });
+    }
     db.exec("COMMIT");
     if (existsSync(file)) renameSync(file, `${file}.migrated`);
   } catch (error) { try { db.exec("ROLLBACK"); } catch {} throw error; }
@@ -64,10 +71,20 @@ class Store {
   getMonitor(id){const r=this.db.prepare("SELECT payload FROM monitors WHERE id=?").get(id);return r?JSON.parse(r.payload):null;}
   getMonitorByProvider(providerId){const r=this.db.prepare("SELECT payload FROM monitors WHERE provider_id=?").get(providerId);return r?JSON.parse(r.payload):null;}
   putMonitor(v){this.db.prepare("INSERT OR REPLACE INTO monitors(id,provider_id,payload) VALUES (?,?,?)").run(v.id,v.providerId,JSON.stringify(v));}
-  deleteMonitor(id){this.db.prepare("DELETE FROM monitors WHERE id=?").run(id);}
+  transaction(fn){this.db.exec("BEGIN IMMEDIATE");try{const result=fn();this.db.exec("COMMIT");return result;}catch(error){this.db.exec("ROLLBACK");throw error;}}
+  deleteMonitor(id){this.transaction(()=>{const monitor=this.getMonitor(id);if(monitor)for(const job of this.listNotifications()){const plan=this.getPlan(job.planId);if(job.monitorId===id||(!job.monitorId&&plan?.providerId===monitor.providerId))this.deleteNotification(job.id);}this.db.prepare("DELETE FROM monitors WHERE id=?").run(id);});}
   listNotifications(){return this.db.prepare("SELECT payload FROM notifications ORDER BY next_attempt_at").all().map(r=>JSON.parse(r.payload));}
+  getNotification(id){const row=this.db.prepare("SELECT payload FROM notifications WHERE id=?").get(id);return row?JSON.parse(row.payload):null;}
   putNotification(v){this.db.prepare("INSERT OR REPLACE INTO notifications(id,next_attempt_at,payload) VALUES (?,?,?)").run(v.id,v.nextAttemptAt,JSON.stringify(v));}
-  deleteNotification(id){this.db.prepare("DELETE FROM notifications WHERE id=?").run(id);}
+  claimNotification(id,owner,now=Date.now()){
+    return Boolean(this.db.prepare(`INSERT INTO notification_claims(id,owner,expires_at)
+      SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM notifications WHERE id=?)
+      ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,expires_at=excluded.expires_at
+      WHERE notification_claims.expires_at<=? RETURNING owner`).get(id,owner,now+60000,id,now));
+  }
+  finishNotification(id,owner,retry=null){return this.transaction(()=>{if(this.db.prepare("SELECT owner FROM notification_claims WHERE id=?").get(id)?.owner!==owner)return false;if(retry)this.putNotification(retry);else this.db.prepare("DELETE FROM notifications WHERE id=?").run(id);this.db.prepare("DELETE FROM notification_claims WHERE id=? AND owner=?").run(id,owner);return true;});}
+  releaseNotification(id,owner){this.db.prepare("DELETE FROM notification_claims WHERE id=? AND owner=?").run(id,owner);}
+  deleteNotification(id){this.db.prepare("DELETE FROM notifications WHERE id=?").run(id);this.db.prepare("DELETE FROM notification_claims WHERE id=?").run(id);}
   addEvent(v){this.db.prepare("INSERT OR REPLACE INTO events(id,at,payload) VALUES (?,?,?)").run(v.id,v.at,JSON.stringify(v));this.db.exec("DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY at DESC LIMIT 500)");}
   listEvents(limit=500){return this.db.prepare("SELECT payload FROM events ORDER BY at DESC LIMIT ?").all(limit).map(r=>JSON.parse(r.payload));}
   getSettings(){return JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='settings'").get().value);}

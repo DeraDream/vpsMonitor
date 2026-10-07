@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "name": "商家卡片分别显示两个系列入口",
+      "result": "PASS"
+    },
+    {
+      "name": "Ryzen 套餐单独显示五张卡片",
+      "result": "PASS"
+    },
+    {
+      "name": "切换 KVM 只展示 KVM 的五张卡片及其配置",
+      "result": "PASS"
+    },
+    {
+      "name": "直接点击 KVM 商家入口默认打开 KVM 页签",
+      "result": "PASS"
+    },
+    {
+      "name": "新任务默认监听所有系列，而非写死十个 ID",
+      "result": "PASS"
+    },
+    {
+      "name": "监控套餐选择按系列分开，切换保留跨系列选择",
+      "result": "PASS"
+    },
+    {
+      "name": "新增第六个 Ryzen 套餐自动出现，KVM 仍独立为五个",
+      "result": "PASS"
+    },
+    {
+      "name": "单系列失败显示保留状态提示，其套餐不消失、不变成售罄",
+      "result": "PASS"
+    },
+    {
+      "name": "手机上的系列页签和弹窗无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "无浏览器或 Vue 运行错误",
+      "result": "PASS"
+    }
+  ],
+  "errors": []
+}

@@ -38,7 +38,7 @@ test('API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作', 
   const child = spawn(process.execPath, ['apps/api/src/server.mjs'], {
     cwd: root,
     env: {
-      ...process.env,
+      ...process.env, DISABLE_BUILTIN_PROVIDERS: "1",
       HOST: '127.0.0.1', PORT: String(port), DATA_DIR: dataDir, WEB_DIST_DIR: webDir,
       ADMIN_PASSWORD: 'integration-password', TOKEN_ENCRYPTION_KEY: 'integration-encryption-key'
     },
