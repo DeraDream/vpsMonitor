@@ -62,7 +62,7 @@ test('API 编辑、删除、校验、事件查询和重启持久化；Worker 心
     const failed = (await request('/api/monitors')).data[0]
     assert.equal(failed.consecutiveFailures, 1)
     assert.match(failed.lastError, /尚未安装/)
-    assert.equal((await request('/api/events')).data[0].type, 'monitor_failed')
+    assert.deepEqual((await request('/api/events')).data, []);assert.ok(store.listEvents().some(e=>e.type==='monitor_failed'))
     await request(`/api/monitors/${id}`, 'PATCH', { enabled: false })
     await request('/api/settings', 'PUT', { telegram: { botToken: 'test-only-secret', chatId: '-123' } })
     await stop(api); await startApi(); await ready()

@@ -28,6 +28,6 @@ export async function discoverBero({ fetchPage = fetch } = {}) {
 
 export const beroHost = {
   key: "bero-host", name: "Bero Host", version: "1.0.0",
-  provider: { id: "bero-host", name: "Bero Host", website: "https://bero-host.de/", categories },
+  provider: { id: "bero-host", name: "Bero Host", website: "https://bero-host.de/", notifyOnFirstDiscovery: false, categories },
   discover: discoverBero
 };

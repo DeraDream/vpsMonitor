@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { encryptToken } from "../../core/src/crypto.mjs";
 
 const DEFAULT_SETTINGS = {
-  telegram: { botTokenEncrypted: "", chatId: "", enabled: false, showBuyLink: true, template: "standard" },
+  telegram: { botTokenEncrypted: "", chatId: "", enabled: false, showBuyLink: true, template: "standard", notificationMode: "restock", notifyNewPlans: true, quietHours: { enabled: false, start: "23:00", end: "08:00" } },
   updates: { repository: "DeraDream/vpsMonitor", branch: "main" }
 };
 
@@ -73,7 +73,7 @@ class Store {
   putMonitor(v){this.db.prepare("INSERT OR REPLACE INTO monitors(id,provider_id,payload) VALUES (?,?,?)").run(v.id,v.providerId,JSON.stringify(v));}
   transaction(fn){this.db.exec("BEGIN IMMEDIATE");try{const result=fn();this.db.exec("COMMIT");return result;}catch(error){this.db.exec("ROLLBACK");throw error;}}
   deleteMonitor(id){this.transaction(()=>{const monitor=this.getMonitor(id);if(monitor)for(const job of this.listNotifications()){const plan=this.getPlan(job.planId);if(job.monitorId===id||(!job.monitorId&&plan?.providerId===monitor.providerId))this.deleteNotification(job.id);}this.db.prepare("DELETE FROM monitors WHERE id=?").run(id);});}
-  listNotifications(){return this.db.prepare("SELECT payload FROM notifications ORDER BY next_attempt_at").all().map(r=>JSON.parse(r.payload));}
+  listNotifications(){return this.db.prepare("SELECT payload FROM notifications ORDER BY next_attempt_at,rowid").all().map(r=>JSON.parse(r.payload));}
   getNotification(id){const row=this.db.prepare("SELECT payload FROM notifications WHERE id=?").get(id);return row?JSON.parse(row.payload):null;}
   putNotification(v){this.db.prepare("INSERT OR REPLACE INTO notifications(id,next_attempt_at,payload) VALUES (?,?,?)").run(v.id,v.nextAttemptAt,JSON.stringify(v));}
   claimNotification(id,owner,now=Date.now()){
@@ -85,9 +85,16 @@ class Store {
   finishNotification(id,owner,retry=null){return this.transaction(()=>{if(this.db.prepare("SELECT owner FROM notification_claims WHERE id=?").get(id)?.owner!==owner)return false;if(retry)this.putNotification(retry);else this.db.prepare("DELETE FROM notifications WHERE id=?").run(id);this.db.prepare("DELETE FROM notification_claims WHERE id=? AND owner=?").run(id,owner);return true;});}
   releaseNotification(id,owner){this.db.prepare("DELETE FROM notification_claims WHERE id=? AND owner=?").run(id,owner);}
   deleteNotification(id){this.db.prepare("DELETE FROM notifications WHERE id=?").run(id);this.db.prepare("DELETE FROM notification_claims WHERE id=?").run(id);}
-  addEvent(v){this.db.prepare("INSERT OR REPLACE INTO events(id,at,payload) VALUES (?,?,?)").run(v.id,v.at,JSON.stringify(v));this.db.exec("DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY at DESC LIMIT 500)");}
-  listEvents(limit=500){return this.db.prepare("SELECT payload FROM events ORDER BY at DESC LIMIT ?").all(limit).map(r=>JSON.parse(r.payload));}
-  getSettings(){return JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='settings'").get().value);}
+  addEvent(v){this.db.prepare("INSERT OR REPLACE INTO events(id,at,payload) VALUES (?,?,?)").run(v.id,v.at,JSON.stringify(v));this.db.exec(`DELETE FROM events WHERE id NOT IN (
+      SELECT id FROM (SELECT id FROM events WHERE json_extract(payload, '$.type') IN ('new_plan','restocked','sold_out','stock_changed','delisted') ORDER BY at DESC LIMIT 500)
+      UNION SELECT id FROM (SELECT id FROM events WHERE COALESCE(json_extract(payload, '$.type'),'') NOT IN ('new_plan','restocked','sold_out','stock_changed','delisted') ORDER BY at DESC LIMIT 500)
+    )`);}
+  listEvents(limit=500,types=null){
+    const filtered=Array.isArray(types)&&types.length;
+    const query=filtered?`SELECT payload FROM events WHERE json_extract(payload, '$.type') IN (${types.map(()=>'?').join(',')}) ORDER BY at DESC LIMIT ?`:"SELECT payload FROM events ORDER BY at DESC LIMIT ?";
+    return this.db.prepare(query).all(...(filtered?[...types,limit]:[limit])).map(r=>JSON.parse(r.payload));
+  }
+  getSettings(){const saved=JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='settings'").get().value);return {...saved,updates:{...DEFAULT_SETTINGS.updates,...saved.updates},telegram:{...DEFAULT_SETTINGS.telegram,...saved.telegram,quietHours:{...DEFAULT_SETTINGS.telegram.quietHours,...saved.telegram?.quietHours}}};}
   setSettings(v){this.db.prepare("UPDATE kv SET value=? WHERE key='settings'").run(JSON.stringify(v));}
   getRuntime(){return JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='runtime'").get().value);}
   setRuntime(v){this.db.prepare("UPDATE kv SET value=? WHERE key='runtime'").run(JSON.stringify(v));}

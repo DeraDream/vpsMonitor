@@ -53,7 +53,7 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
             <p class="meta">{{ plan.location || '未标注地区' }}</p><h3>{{ plan.name }}</h3>
             <PlanDetails :plan="plan"/><p class="price">{{ plan.price || '价格未知' }}{{ plan.billingCycle ? ` / ${plan.billingCycle}` : '' }}</p>
             <p v-if="Number.isInteger(plan.quantity)" class="meta">库存：{{plan.quantity}} 台</p><p class="status" :class="{ available: plan.available }">{{ categoryStatus?.lastError ? '上次状态：' : '' }}{{statusLabel(plan)}}</p>
-            <a v-if="plan.buyUrl" class="button secondary" :href="plan.buyUrl" target="_blank" rel="noopener noreferrer">查看商家页面</a>
+            <a v-if="plan.buyUrl" class="button secondary" :href="plan.buyUrl" target="_blank" rel="noopener noreferrer">{{dialog.providerId==='greencloud'?'查看套餐购买页':'查看商家页面'}}</a>
           </article>
         </section>
         <div v-else class="empty">{{categoryStatus?.lastSuccessAt?'该分类当前没有公开套餐。':'该系列尚未抓取到套餐，成功探测后会自动显示。'}}</div>
@@ -93,6 +93,7 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
           <article v-for="plan in visiblePlans" :key="plan.id" class="monitor-plan-choice" :class="{selected:form.planIds.includes(plan.id)}">
             <label class="plan-choice-heading"><input type="checkbox" :value="plan.id" v-model="form.planIds" @change="form.scope = 'selected'"><span>{{plan.name}}<span class="meta">{{statusLabel(plan)}}</span></span><strong class="plan-choice-price">{{plan.price||'价格未知'}}</strong></label>
             <PlanDetails :plan="plan"/><p v-if="Number.isInteger(plan.quantity)" class="meta">库存：{{plan.quantity}} 台</p>
+            <a v-if="dialog.providerId==='greencloud'&&plan.buyUrl" class="button ghost" :href="plan.buyUrl" target="_blank" rel="noopener noreferrer">查看套餐购买页</a>
           </article>
           <p v-if="!active.plans.length" class="hint">{{categoryStatus?.lastSuccessAt?'该分类当前没有公开套餐。':'该系列尚未抓取到套餐；保存“全部套餐”监控后会自动发现。'}}</p>
         </div>

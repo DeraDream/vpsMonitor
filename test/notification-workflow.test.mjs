@@ -158,3 +158,57 @@ test('Telegram 403 永久错误停止重试并记录原因', () => fixture(async
   assert.equal(store.listNotifications().length,0)
   assert.ok(store.listEvents().some(event=>event.error==='Forbidden'))
 }))
+
+function allNotifications(store){const settings=store.getSettings();settings.telegram.notificationMode='all';store.setSettings(settings)}
+test('全部变化模式补货、数量变化和售罄都发新卡片，未发送旧卡片也能检测变化',()=>fixture(async({store,service,calls,probe})=>{
+ allNotifications(store);
+ await probe({available:false,quantity:0});
+ await probe({available:true,quantity:3});
+ await probe({available:true,quantity:2});
+ await probe({available:true,quantity:2});
+ await probe({available:false,quantity:0});
+ await service.deliverNotifications();
+ assert.deepEqual(calls.map(c=>c.method),['sendMessage','sendMessage','sendMessage']);
+ assert.match(calls[0].text,/库存：3 台/);assert.match(calls[1].text,/库存变化：3 → 2/);assert.match(calls[2].text,/售罄/);assert.ok(calls.every(c=>c.text.includes('北京时间')));
+ assert.equal(store.listNotifications().length,0);
+}));
+test('全部变化模式不依赖已有补货 messageId，未知数量转公开数量也推送',()=>fixture(async({store,service,calls,probe})=>{
+ allNotifications(store);
+ store.putPlan({id:'synthetic:item',providerId:'synthetic',externalId:'item',name:'Fixture',available:true,quantity:null,notification:null});
+ await probe({available:true,quantity:2});await service.deliverNotifications();
+ await probe({available:false,quantity:0});await service.deliverNotifications();
+ assert.equal(calls.length,2);assert.match(calls[0].text,/未公开 → 2/);assert.match(calls[1].text,/售罄/);
+}));
+test('免打扰暂停发送，跨午夜结束后保留历史补货、库存和售罄快照逐条补发',()=>fixture(async({store,calls,probe})=>{
+ allNotifications(store);const settings=store.getSettings();settings.telegram.quietHours={enabled:true,start:'23:00',end:'08:00'};store.setSettings(settings);
+ let time=Date.parse('2099-01-01T15:30:00Z');const service=createService(store,{now:()=>time});
+ await probe({available:false,quantity:0});await probe({available:true,quantity:5});await probe({available:true,quantity:4});await probe({available:false,quantity:0});
+ await service.deliverNotifications();assert.equal(calls.length,0);assert.equal(store.listNotifications().length,3);assert.ok(store.listNotifications().every(n=>n.attempts===0));
+ time=Date.parse('2099-01-02T00:00:00Z');await service.deliverNotifications();
+ assert.equal(calls.length,3);assert.match(calls[0].text,/库存：5 台/);assert.match(calls[1].text,/5 → 4/);assert.match(calls[2].text,/售罄/);
+}));
+test('免打扰也暂停默认模式的卡片编辑，结束后保留原 messageId',()=>fixture(async({store,service,calls,probe})=>{
+ await probe({available:true,quantity:3});await service.deliverNotifications();
+ const settings=store.getSettings();settings.telegram.quietHours={enabled:true,start:'23:00',end:'08:00'};store.setSettings(settings);
+ let time=Date.parse('2099-01-01T15:30:00Z');const paused=createService(store,{now:()=>time});
+ await probe({available:false,quantity:0});await paused.deliverNotifications();assert.equal(calls.length,1);
+ time=Date.parse('2099-01-02T00:00:00Z');await paused.deliverNotifications();assert.equal(calls.length,2);assert.equal(calls[1].method,'editMessageText');assert.equal(calls[1].message_id,1);
+}));
+test('TG 底层统一免打扰，手动发送和编辑都不能绕过，且不发网络请求',()=>fixture(async({store,calls})=>{
+ const {telegramCall}=await import('../packages/core/src/telegram.mjs');
+ const settings={...store.getSettings().telegram,quietHours:{enabled:true,start:'23:00',end:'08:00'}};
+ for(const method of ['sendMessage','editMessageText'])await assert.rejects(()=>telegramCall(settings,method,{}, {now:Date.parse('2099-01-01T15:00:00Z')}),e=>e.quietHours&&e.resumeAt==='2099-01-02T00:00:00.000Z');
+ assert.equal(calls.length,0);
+}));
+test('免打扰队列和新设置持久化，另一个进程结束后可以补发',()=>fixture(async({dir,store,calls,probe})=>{
+ allNotifications(store);const settings=store.getSettings();settings.telegram.quietHours={enabled:true,start:'23:00',end:'08:00'};store.setSettings(settings);
+ await probe({available:true,quantity:3});
+ const second=createDatabase(dir);
+ try{assert.equal(second.getSettings().telegram.notificationMode,'all');const service=createService(second,{now:()=>Date.parse('2099-01-02T00:00:00Z')});await service.deliverNotifications();assert.equal(calls.length,1);assert.equal(store.listNotifications().length,0)}finally{second.close()}
+}));
+test('更改监控套餐范围后，原范围的积压通知不能继续发送',()=>fixture(async({store,service,calls,probe})=>{
+ allNotifications(store);await probe({available:true,quantity:3});store.putMonitor({...store.getMonitor('m'),scope:'selected',planIds:['synthetic:other']});await service.deliverNotifications();assert.equal(calls.length,0);assert.equal(store.listNotifications().length,0);
+}));
+test('切回默认补货模式，待发送的全部变化库存和售罄提醒取消',()=>fixture(async({store,service,calls,probe})=>{
+ allNotifications(store);await probe({available:true,quantity:3});await service.deliverNotifications();await probe({available:true,quantity:2});await probe({available:false,quantity:0});const settings=store.getSettings();settings.telegram.notificationMode='restock';store.setSettings(settings);await service.deliverNotifications();assert.equal(calls.length,1);assert.equal(store.listNotifications().length,0);
+}));

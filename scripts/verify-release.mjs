@@ -40,6 +40,7 @@ try {
   let ready = false
   for (let i = 0; i < 100; i++) { try { if ((await fetch(base+'/api/auth/session')).status === 200) { ready = true; break } } catch {} await new Promise(resolve => setTimeout(resolve, 50)) }
   assert.ok(ready, '解压后的 API 未能启动')
+  const publicResponse=await fetch(base+'/api/public/catalog');assert.equal(publicResponse.status,200);assert.equal((await publicResponse.json()).version,version);assert.equal((await fetch(base+'/admin')).status,200);
   const anonymous=await fetch(base+'/api/dashboard');assert.equal(anonymous.status,401);assert.equal(anonymous.headers.has('www-authenticate'),false)
   const login=await request('/api/auth/login','POST',{username:'admin',password:'release-test-password'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0]
   const update=await (await request('/api/updates/status')).json();assert.equal(update.mode,'release')
@@ -59,7 +60,7 @@ try {
   const release = JSON.parse(await readFile(join(bundle, 'release-manifest.json'), 'utf8'))
   assert.equal(release.version, version); assert.equal(release.builtLocally, true)
   const result = { version, filename, sha256: digest, verified: true,
-    checks: ['SHA256', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '解压后 Worker 心跳'] }
+    checks: ['SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '解压后 Worker 心跳'] }
   await writeFile(join(root, 'releases/verification.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify(result, null, 2))
 } finally { for (const child of children.reverse()) await stop(child); await rm(dir, { recursive: true, force: true }) }

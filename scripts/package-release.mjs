@@ -20,7 +20,7 @@ const output = join(root, 'releases'), filename = `${bundleName}-linux-x64.tar.g
 await mkdir(bundle); await mkdir(output, { recursive: true })
 try {
   for (const name of ['package.json', 'package-lock.json', '.env.example', 'README.md', 'CHANGELOG.md',
-    'docs/RELEASE-INSTALL.md', 'docs/GREENCloud.md', 'deploy/install-release.sh', 'deploy/systemd', 'scripts/bero-probe.mjs']) {
+    'docs/RELEASE-INSTALL.md', 'docs/GREENCloud.md', 'docs/NOTIFICATIONS.md', 'docs/PUBLIC-SITE.md', 'deploy/install-release.sh', 'deploy/systemd', 'scripts/bero-probe.mjs']) {
     await mkdir(resolve(bundle, name, '..'), { recursive: true })
     await cp(join(root, name), join(bundle, name), { recursive: true })
   }

@@ -1,0 +1,33 @@
+{
+  "results": [
+    {
+      "name": "线上版本 1.4.1 与新通知设置显示",
+      "result": "PASS"
+    },
+    {
+      "name": "线上三种卡片预览完成加载",
+      "result": "PASS"
+    },
+    {
+      "name": "通知模式和跨午夜时间控件可操作，取消草稿不改变服务器配置",
+      "result": "PASS"
+    },
+    {
+      "name": "线上 1024px 设置布局无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "线上 768px 设置布局无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "线上 390px 设置布局无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "线上 320px 设置布局无横向溢出",
+      "result": "PASS"
+    }
+  ],
+  "errors": []
+}

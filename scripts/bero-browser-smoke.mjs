@@ -34,7 +34,7 @@ try {
   const page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
-  await page.goto(base)
+  await page.goto(base+'/admin')
   await page.getByLabel('用户名',{exact:true}).fill('admin')
   await page.getByLabel('密码',{exact:true}).fill('bero-browser-password')
   await page.getByRole('button',{name:'登录控制台'}).click()

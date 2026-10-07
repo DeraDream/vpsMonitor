@@ -61,14 +61,14 @@ test('动态分类持久化、分类监控及初始基线；之后新增和补�
   const initial=parseProducts(fixtures['budget-kvm-sale'],category)
   let batch={categories:[category],plans:initial,completedCategories:[category.id],failures:[]}
   registerAdapter({key:'green-test',discover:async()=>batch});store.putProvider({...provider,adapterKey:'green-test'})
-  const settings=store.getSettings();settings.telegram={...settings.telegram,enabled:true,chatId:'-1',botTokenEncrypted:'fixture-encrypted'};store.setSettings(settings)
+  const settings=store.getSettings();settings.telegram={...settings.telegram,enabled:true,notifyNewPlans:true,chatId:'-1',botTokenEncrypted:'fixture-encrypted'};store.setSettings(settings)
   const service=createService(store),monitor=store.getMonitorByProvider('greencloud')
   await service.runMonitorSafe(monitor);assert.equal(store.listPlans('greencloud').length,3);assert.equal(store.listEvents().filter(e=>e.type==='restocked').length,0);assert.equal(store.listNotifications().length,0)
   bootstrapProviders(store);assert.equal(store.getProvider('greencloud').categories.length,1);store.putProvider({...store.getProvider('greencloud'),adapterKey:'green-test'})
   const selected=service.validateMonitor({...store.getMonitor(monitor.id),scope:'categories',categoryIds:[category.id]},monitor.id);store.putMonitor({...store.getMonitor(monitor.id),...selected});assert.equal(service.monitorView(store.getMonitor(monitor.id)).planCount,3)
   assert.throws(()=>service.validateMonitor({...selected,categoryIds:[]},monitor.id),/有效分类/);assert.throws(()=>service.validateMonitor({...selected,categoryIds:['ryzen']},monitor.id),/有效分类/)
   assert.equal(monitored({categoryId:category.id},selected),true);assert.equal(monitored({categoryId:'other'},selected),false)
-  batch={...batch,plans:[{...initial[0],available:true,quantity:2},...initial.slice(1),{...initial[1],externalId:category.id+':999999',name:'New Deal'}]};await service.runMonitorSafe(store.getMonitor(monitor.id));assert.equal(store.listEvents().filter(e=>e.type==='restocked').length,2);assert.equal(store.listNotifications().length,2);assert.equal(service.monitorView(store.getMonitor(monitor.id)).planCount,4)
+  batch={...batch,plans:[{...initial[0],available:true,quantity:2},...initial.slice(1),{...initial[1],externalId:category.id+':999999',name:'New Deal'}]};await service.runMonitorSafe(store.getMonitor(monitor.id));assert.equal(store.listEvents().filter(e=>e.type==='restocked').length,1);assert.equal(store.listEvents().filter(e=>e.type==='new_plan').length,1);assert.equal(store.listNotifications().length,2);assert.equal(service.monitorView(store.getMonitor(monitor.id)).planCount,4)
   const old=store.listPlans('greencloud');batch={categories:[category],plans:[],completedCategories:[],failures:[{categoryId:category.id,categoryName:category.name,error:'broken'}]};await service.runMonitorSafe(store.getMonitor(monitor.id));assert.deepEqual(store.listPlans('greencloud'),old)
   batch={categories:[{id:'new-group',name:'New Group',url:'https://greencloudvps.com/billing/store/new-group'}],plans:[],completedCategories:['new-group'],failures:[]};await service.runMonitorSafe(store.getMonitor(monitor.id));assert.ok(store.listPlans('greencloud').every(p=>p.listed===false));assert.equal(store.getProvider('greencloud').categories.find(c=>c.id===category.id).retired,true)
  }finally{store.close();await rm(dir,{recursive:true,force:true})}
@@ -77,3 +77,15 @@ test('动态分类持久化、分类监控及初始基线；之后新增和补�
 test('目录异常时为已有每个分类记录失败，不把旧库存当成最新状态',async()=>{
  await assert.rejects(()=>discoverGreenCloud({provider:{categories:cats},fetchPage:async()=>new Response('',{status:403}),delayMs:0}),e=>e.failures.length===19)
 })
+
+test('官网有货和售罄套餐均保留各自专属购买地址，TG 不使用分类页替代',async()=>{
+ const html=await readFile(new URL('../packages/adapters/src/greencloud/fixtures/purchase-links.html',import.meta.url),'utf8');
+ const plans=parseProducts(html,category),available=plans.find(p=>p.name==='BudgetKVMMO-2'),sold=plans.find(p=>p.name==='BudgetKVMNYC-2');
+ assert.equal(available.quantity,5);assert.equal(available.available,true);assert.equal(sold.quantity,0);assert.equal(sold.available,false);
+ assert.equal(available.buyUrl,'https://greencloudvps.com/billing/store/budget-kvm-sale/budgetkvmmo-2');
+ assert.equal(sold.buyUrl,'https://greencloudvps.com/billing/store/budget-kvm-sale/budgetkvmnyc-2');
+ for(const p of plans){assert.notEqual(p.buyUrl,p.sourceUrl);assert.ok(formatCard(normalizePlan(p,'greencloud'),{showBuyLink:true},p.available?'restocked':'sold_out').includes(`href="${p.buyUrl}"`));}
+ // Display names and product slugs can differ. The merchant's link is authoritative.
+ const changed=html.replace('BudgetKVMMO-2','MO Plan with another display name');
+ assert.equal(parseProducts(changed,category)[0].buyUrl,available.buyUrl);
+});

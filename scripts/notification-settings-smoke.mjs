@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict'
+import {spawn} from 'node:child_process'
+import {once} from 'node:events'
+import {mkdtemp,rm,writeFile} from 'node:fs/promises'
+import {join} from 'node:path'
+import {tmpdir} from 'node:os'
+import {pathToFileURL} from 'node:url'
+const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
+const dir=await mkdtemp(join(tmpdir(),'vps-notification-settings-')),port=55000+Math.floor(Math.random()*1000),base=`http://127.0.0.1:${port}`
+const child=spawn(process.execPath,['apps/api/src/server.mjs'],{env:{...process.env,DISABLE_BUILTIN_PROVIDERS:'1',DATA_DIR:dir,HOST:'127.0.0.1',PORT:String(port),ADMIN_PASSWORD:'',TOKEN_ENCRYPTION_KEY:'test-settings-key'},stdio:'ignore'})
+const results=[],errors=[];let browser
+const request=async(path,body)=>{const r=await fetch(base+path,body===undefined?{}:{method:path==='/api/settings'?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,data:await r.json()}}
+async function check(name,fn){await fn();results.push({name,result:'PASS'})}
+try{
+ for(let i=0;i<100;i++){try{if((await fetch(base+'/api/auth/session')).ok)break}catch{}await new Promise(r=>setTimeout(r,50))}
+ browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/admin#settings');await page.getByLabel('库存通知模式').waitFor()
+ await check('旧设置读取自动获得默认补货模式及关闭的免打扰',async()=>{const {data}=await request('/api/settings');assert.equal(data.telegram.notificationMode,'restock');assert.deepEqual(data.telegram.quietHours,{enabled:false,start:'23:00',end:'08:00'})})
+ await check('通知模式与跨午夜免打扰可以从网页保存',async()=>{await page.getByLabel('库存通知模式').selectOption('all');await page.getByLabel('开启免打扰（北京时间 UTC+8）').check();await page.getByLabel('免打扰开始时间').fill('23:00');await page.getByLabel('免打扰结束时间').fill('08:00');await page.getByRole('button',{name:'保存设置',exact:true}).click();await page.locator('.toast.show').filter({hasText:'Telegram 设置已保存'}).waitFor();const {data}=await request('/api/settings');assert.equal(data.telegram.notificationMode,'all');assert.deepEqual(data.telegram.quietHours,{enabled:true,start:'23:00',end:'08:00'})})
+ await check('刷新页面后新选项与区间持久化',async()=>{await page.reload();await page.getByLabel('库存通知模式').waitFor();assert.equal(await page.getByLabel('库存通知模式').inputValue(),'all');assert.ok(await page.getByLabel('开启免打扰（北京时间 UTC+8）').isChecked());assert.equal(await page.getByLabel('免打扰结束时间').inputValue(),'08:00')})
+ await check('三种 TG 卡片预览包含库存变化标题和前后数量',async()=>{await page.locator('.preview').filter({hasText:'库存变化：5 → 3'}).waitFor();assert.equal(await page.locator('.preview').count(),3);assert.ok((await page.locator('.preview').allTextContents()).some(t=>t.includes('售罄')))})
+ await check('开始结束相同显示页内错误，保存失败不覆盖已保存设置',async()=>{await page.getByLabel('免打扰结束时间').fill('23:00');await page.getByRole('button',{name:'保存设置',exact:true}).click();await page.locator('.toast.show').filter({hasText:'不能相同'}).waitFor();assert.equal((await request('/api/settings')).data.telegram.quietHours.end,'08:00');assert.equal(await page.getByLabel('免打扰结束时间').inputValue(),'23:00')})
+ await check('API 拒绝未知模式、非法区间、布尔类型和时区字段',async()=>{for(const telegram of [{notificationMode:'wrong'},{quietHours:null},{quietHours:{enabled:'true'}},{quietHours:{start:'24:00'}},{quietHours:{end:'08:60'}},{quietHours:{start:'08:00',end:'08:00'}},{quietHours:{timeZone:'UTC'}}])assert.equal((await request('/api/settings',{telegram})).status,400)})
+ await check('区间内手动 TG 测试也被统一禁止，无真实消息发送',async()=>{const minute=(Math.floor(Date.now()/60000)+480)%1440;const fmt=n=>`${String(Math.floor((n+1440)%1440/60)).padStart(2,'0')}:${String((n+1440)%60).padStart(2,'0')}`;assert.equal((await request('/api/settings',{telegram:{botToken:'fake-only-test-token',chatId:'-1',quietHours:{enabled:true,start:fmt(minute-60),end:fmt(minute+60)}}})).status,200);const response=await request('/api/telegram/test',{});assert.equal(response.status,400);assert.match(response.data.error,/北京时间免打扰/);assert.equal((await request('/api/settings')).data.telegram.botTokenConfigured,true)})
+ for(const width of [1440,1024,768,390,320])await check(`${width}px 通知设置与区间控件不溢出`,async()=>{await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.getByLabel('库存通知模式').scrollIntoViewIfNeeded();assert.ok(await page.getByLabel('库存通知模式').isVisible())})
+ assert.deepEqual(errors,[]);await writeFile('/tmp/vpsmonitor-notification-settings-browser.json',JSON.stringify({results,errors},null,2)+'\n');console.log(JSON.stringify({checks:results.length,results,errors},null,2))
+}finally{if(browser)await browser.close();const exited=once(child,'exit');child.kill('SIGTERM');await exited;await rm(dir,{recursive:true,force:true})}

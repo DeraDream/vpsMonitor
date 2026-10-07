@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "name": "BudgetKVMMO-2 专属购买入口",
+      "result": "PASS"
+    },
+    {
+      "name": "BudgetKVMNYC-2 专属购买入口",
+      "result": "PASS"
+    },
+    {
+      "name": "390px 购买入口布局",
+      "result": "PASS"
+    },
+    {
+      "name": "320px 购买入口布局",
+      "result": "PASS"
+    },
+    {
+      "name": "检查不更改现有监控范围",
+      "result": "PASS"
+    }
+  ],
+  "errors": []
+}

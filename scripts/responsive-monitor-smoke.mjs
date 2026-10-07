@@ -22,7 +22,7 @@ async function check(name,fn){await fn();results.push({name,result:'PASS'})}
 try{
  for(let i=0;i<100;i++){try{if((await fetch(base+'/api/auth/session')).ok)break}catch{}await new Promise(r=>setTimeout(r,40))}
  browser=await chromium.launch({headless:true,args:['--no-sandbox']});const context=await browser.newContext({viewport:{width:1440,height:900}}),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message))
- await page.goto(base);await page.getByLabel('密码',{exact:true}).fill('responsive-test');await page.getByRole('button',{name:'登录控制台'}).click();await page.locator('nav').waitFor()
+ await page.goto(base+'/admin');await page.getByLabel('密码',{exact:true}).fill('responsive-test');await page.getByRole('button',{name:'登录控制台'}).click();await page.locator('nav').waitFor()
  await page.locator('nav').getByRole('link',{name:'监控',exact:true}).click()
  await check('已有商家任务时添加按钮仍弹窗，先选择商家',async()=>{await page.getByRole('button',{name:'添加监控',exact:true}).click();await page.getByRole('dialog').waitFor();assert.equal(await page.getByLabel('1. 选择商家').evaluate(e=>e.selectedOptions[0].disabled),true);assert.equal(await page.getByRole('button',{name:'保存任务'}).isDisabled(),true)})
  await check('选择已有 Bero 任务进入编辑，不创建重复任务',async()=>{await page.getByLabel('1. 选择商家').selectOption('bero-host');await page.getByText('此商家已有监控任务，保存会更新该任务。').waitFor();await page.locator('.monitor-plan-choice').first().waitFor();assert.equal(await page.locator('.monitor-plan-choice').count(),5)})
