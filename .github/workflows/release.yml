@@ -25,5 +25,5 @@ jobs:
           name: VPS Monitor ${{ github.ref_name }}
           body_path: docs/RELEASE-${{ github.ref_name }}.md
           files: |
-            releases/vps-monitor-${{ github.ref_name }}-linux-x64.tar.gz
+            releases/vps-monitor-*-linux-x64.tar.gz
             releases/SHA256SUMS

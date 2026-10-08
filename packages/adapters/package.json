@@ -1,6 +1,6 @@
 {
   "name": "@vps-monitor/adapters",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "type": "module",
   "exports": "./src/index.mjs",
   "dependencies": {
