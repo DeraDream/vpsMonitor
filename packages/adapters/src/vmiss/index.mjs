@@ -10,7 +10,7 @@ const script = fileURLToPath(new URL("./probe.py", import.meta.url));
 export async function discoverVmiss() {
   let output;
   try { output = await exec("xvfb-run", ["-a", python, script], { timeout: 15 * 60_000, maxBuffer: 50 * 1024 * 1024, env: { ...process.env, VPS_MONITOR_VMISS_PROFILE: process.env.VPS_MONITOR_VMISS_PROFILE || "/opt/vps-monitor/data/browser-profiles/vmiss" } }); }
-  catch (error) { throw new Error(`VMISS 浏览器采集失败：${error.stderr || error.message}`); }
+  catch (error) { throw new Error(`VMISS 浏览器采集失败：${error.stderr || error.stdout || error.message}${error.signal ? `（信号 ${error.signal}）` : ""}`); }
   let result;
   try { result = JSON.parse(output.stdout); } catch { throw new Error("VMISS 浏览器返回了无效数据"); }
   if (result.fatal) throw new Error(`VMISS 浏览器采集失败：${result.fatal}`);
@@ -25,4 +25,4 @@ export async function discoverVmiss() {
   return { categories: result.categories, plans, completedCategories, failures };
 }
 
-export const vmiss = { key: "vmiss", name: "VMISS", version: "1.0.0", provider: { id: "vmiss", name: "VMISS", website: "https://app.vmiss.com/", categories: [], dynamicCategories: true, defaultIntervalSeconds: 300, notifyOnFirstDiscovery: false }, discover: discoverVmiss };
+export const vmiss = { key: "vmiss", name: "VMISS", version: "1.0.0", provider: { id: "vmiss", name: "VMISS", website: "https://app.vmiss.com/", categories: [], dynamicCategories: true, defaultIntervalSeconds: 20, notifyOnFirstDiscovery: false }, discover: discoverVmiss };

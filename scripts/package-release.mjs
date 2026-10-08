@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 
-if (process.env.GITHUB_ACTIONS === 'true') throw new Error('仅允许本地打包，不在 GitHub Actions 中生成发布包')
+if (process.env.GITHUB_ACTIONS === 'true' && process.env.ALLOW_GITHUB_RELEASE_PACKAGE !== '1') throw new Error('GitHub Actions 仅允许由版本发布工作流生成发布包')
 if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('本发布包要求在 Linux x64 环境生成')
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))

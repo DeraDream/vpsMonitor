@@ -1,0 +1,29 @@
+name: Package and Publish Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build:web
+      - run: npm run package:release
+        env:
+          ALLOW_GITHUB_RELEASE_PACKAGE: '1'
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: VPS Monitor ${{ github.ref_name }}
+          body_path: docs/RELEASE-${{ github.ref_name }}.md
+          files: |
+            releases/vps-monitor-${{ github.ref_name }}-linux-x64.tar.gz
+            releases/SHA256SUMS

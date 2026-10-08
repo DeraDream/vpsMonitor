@@ -31,8 +31,8 @@ export function createBotManagement(store, service, {call=telegramCall, origin=p
  const navigation=(kind,p)=>[...(p.index>0?[button('‹ 上一页',`${kind}:${p.index-1}`)]:[]),...(p.index+1<p.pages?[button('下一页 ›',`${kind}:${p.index+1}`)]:[])];
  const pageLabel=p=>`共 ${p.total} 项 · 第 ${p.index+1}/${Math.max(1,p.pages)} 页`;
  function settingsPatch(patch){const settings=store.getSettings();Object.assign(settings.telegram,patch);store.setSettings(settings);audit('修改通知设置')}
- function interval(value){if(!Number.isInteger(value)||value<30||value>3600)throw new Error('检查间隔须为 30–3600 秒的整数');return value}
- function parseInterval(value){const match=/^(\d+)\s*(s|秒|m|分钟)?$/i.exec(String(value).trim());if(!match)throw new Error('请输入秒数（例如 75），或分钟数（例如 5m）；范围 30–3600 秒');return interval(Number(match[1])*(/^(m|分钟)$/i.test(match[2]||'')?60:1))}
+ function interval(value){if(!Number.isInteger(value)||value<20||value>3600)throw new Error('检查间隔须为 20–3600 秒的整数');return value}
+ function parseInterval(value){const match=/^(\d+)\s*(s|秒|m|分钟)?$/i.exec(String(value).trim());if(!match)throw new Error('请输入秒数（例如 20），或分钟数（例如 5m）；范围 20–3600 秒');return interval(Number(match[1])*(/^(m|分钟)$/i.test(match[2]||'')?60:1))}
  async function execute(chat,action,messageId) {
   const [kind,arg,extra]=action.split(':');
   const show=(body,rows)=>display(chat,body,rows,messageId);
@@ -54,20 +54,20 @@ export function createBotManagement(store, service, {call=telegramCall, origin=p
   }
   if(kind==='add'){
    const p=page(store.listProviders().filter(v=>!store.getMonitorByProvider(v.id)),arg);
-   return show(title('＋','添加监控',pageLabel(p))+'\n'+(p.total?'选择商家创建监控。\n默认监控全部套餐，每 1 分钟检查一次。':'所有已接入商家都已有监控。'),[...p.items.map(v=>[button(label(v.name),`create:${v.id}`)]),navigation('add',p),[button('‹ 监控列表','monitors:0')]]);
+   return show(title('＋','添加监控',pageLabel(p))+'\n'+(p.total?'选择商家创建监控。\n默认监控全部套餐，检查间隔按商家默认设置。':'所有已接入商家都已有监控。'),[...p.items.map(v=>[button(label(v.name),`create:${v.id}`)]),navigation('add',p),[button('‹ 监控列表','monitors:0')]]);
   }
-  if(kind==='create'){const provider=store.getProvider(arg);if(!provider)throw new Error('商家不存在');if(store.getMonitorByProvider(arg))throw new Error('商家已有监控');const time=new Date(now()).toISOString();store.putMonitor({...service.validateMonitor({providerId:arg,enabled:true,intervalSeconds:60,scope:'all'}),id:`monitor_${randomBytes(8).toString('hex')}`,createdAt:time,updatedAt:time,lastRunAt:null,lastError:null});audit(`创建 ${provider.name} 监控`);return next('monitors:0')}
+  if(kind==='create'){const provider=store.getProvider(arg);if(!provider)throw new Error('商家不存在');if(store.getMonitorByProvider(arg))throw new Error('商家已有监控');const time=new Date(now()).toISOString();store.putMonitor({...service.validateMonitor({providerId:arg,enabled:true,intervalSeconds:provider.defaultIntervalSeconds||60,scope:'all'}),id:`monitor_${randomBytes(8).toString('hex')}`,createdAt:time,updatedAt:time,lastRunAt:null,lastError:null});audit(`创建 ${provider.name} 监控`);return next('monitors:0')}
   if(kind==='monitor'){
    const m=monitor(arg),scope=m.scope==='selected'?'指定套餐':m.scope==='categories'?'指定分类':'全部套餐';
    return show(title('🎛',providerName(m),'监控详情')+`\n${m.enabled?'🟢 监控运行中':'⚪ 监控已暂停'}\n\n<b>检查配置</b>\n检查间隔  <b>${duration(m.intervalSeconds)}</b>\n监控范围  ${scope}\n\n<b>最近检查</b>\n<code>${text(date(m.lastRunAt))}</code>\n${m.lastError?'⚠ '+text(m.lastError):'✅ 无异常记录'}\n\n<i>时间为北京时间。</i>`,[[button(m.enabled?'⏸ 暂停监控':'▶ 启用监控',`toggle:${arg}`),button('↻ 立即检查',`run:${arg}`)],[button('⏱ 检查间隔',`interval:${arg}`),button('🗑 删除监控',`delete:${arg}`)],[button('‹ 监控列表','monitors:0')]]);
   }
   if(kind==='toggle'){const m=monitor(arg);updateMonitor(arg,{enabled:!m.enabled});return next(`monitor:${arg}`)}
   if(kind==='interval'){
-   const m=monitor(arg);return show(title('⏱','检查间隔',providerName(m))+`\n当前间隔  <b>${duration(m.intervalSeconds)}</b>\n\n选择快捷时间，或输入自定义间隔。\n支持 <b>30–3600 秒</b>。`,[[30,60,120].map(v=>button(`${v===m.intervalSeconds?'✓ ':''}${duration(v)}`,`setinterval:${arg}:${v}`)),[300,600,1800].map(v=>button(`${v===m.intervalSeconds?'✓ ':''}${duration(v)}`,`setinterval:${arg}:${v}`)),[button('✎ 自定义间隔',`custominterval:${arg}`)],[button('‹ 监控详情',`monitor:${arg}`)]]);
+   const m=monitor(arg);return show(title('⏱','检查间隔',providerName(m))+`\n当前间隔  <b>${duration(m.intervalSeconds)}</b>\n\n选择快捷时间，或输入自定义间隔。\n支持 <b>20–3600 秒</b>。`,[[20,30,60].map(v=>button(`${v===m.intervalSeconds?'✓ ':''}${duration(v)}`,`setinterval:${arg}:${v}`)),[120,300,600].map(v=>button(`${v===m.intervalSeconds?'✓ ':''}${duration(v)}`,`setinterval:${arg}:${v}`)),[1800,3600].map(v=>button(`${v===m.intervalSeconds?'✓ ':''}${duration(v)}`,`setinterval:${arg}:${v}`)),[button('✎ 自定义间隔',`custominterval:${arg}`)],[button('‹ 监控详情',`monitor:${arg}`)]]);
   }
   if(kind==='custominterval'){
    const m=monitor(arg);inputs.set(String(chat),{admin:admin(),monitorId:arg,messageId,expires:now()+300000});
-   return show(title('✎','自定义检查间隔',providerName(m))+`\n当前  <b>${duration(m.intervalSeconds)}</b>\n\n直接发送希望设置的时间：\n<code>75</code> 或 <code>75秒</code> → 75 秒\n<code>5m</code> 或 <code>5分钟</code> → 5 分钟\n\n范围 <b>30–3600 秒</b>，请输入整数。\n<i>5 分钟内有效，/cancel 可取消。</i>`,[[button('取消输入',`interval:${arg}`)]]);
+   return show(title('✎','自定义检查间隔',providerName(m))+`\n当前  <b>${duration(m.intervalSeconds)}</b>\n\n直接发送希望设置的时间：\n<code>20</code> 或 <code>75秒</code> → 秒\n<code>5m</code> 或 <code>5分钟</code> → 分钟\n\n范围 <b>20–3600 秒</b>，请输入整数。\n<i>5 分钟内有效，/cancel 可取消。</i>`,[[button('取消输入',`interval:${arg}`)]]);
   }
   if(kind==='setinterval'){updateMonitor(arg,{intervalSeconds:interval(Number(extra))});return next(`monitor:${arg}`)}
   if(kind==='run'){const m=monitor(arg);await show(title('↻',providerName(m))+'\n正在检查库存，请稍候…',[[button('‹ 监控列表','monitors:0')]]);await service.runMonitorSafe(m);audit(`立即检查 ${providerName(m)}`);return next(`monitor:${arg}`)}
