@@ -6,6 +6,7 @@ import { quietHoursStatus } from "./notification-policy.mjs";
 
 export function createService(store, {now: notificationNow=Date.now}={}) {
   const snapshot=plan=>Object.fromEntries(["name","price","billingCycle","specs","location","quantity","available","buyUrl","categoryName","cpu","ram","storage","bandwidth","portSpeed"].filter(key=>plan[key]!==undefined).map(key=>[key,plan[key]]));
+  const notificationCard=(plan,settings,status)=>formatCard({...plan,providerName:store.getProvider(plan.providerId)?.name||plan.providerName},settings,status);
   const addEvent = (type,message,extra={}) => { if(!["new_plan","restocked","sold_out","stock_changed","delisted"].includes(type))( /failed|partial/.test(type)?console.error:console.log)(`[${type}] ${message}${extra.error?" — "+extra.error:""}`);return store.addEvent({id:`event_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),type,message,...extra}); };
   function monitorView(monitor) {
     const provider=store.getProvider(monitor.providerId);
@@ -66,14 +67,14 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
             // Each queued event is an immutable observation, including changes
             // made during quiet hours. Never rewrite history with today's stock.
             const card=job.snapshot||plan;
-            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:formatCard(card,settings,job.action),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
+            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:notificationCard(card,settings,job.action),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
             store.transaction(()=>{
               const latest=store.getPlan(plan.id);
               if(latest&&latest.notificationCycle===job.cycleId){const notification={chatId,messageId:result.message_id,sentAt:new Date().toISOString()};store.putPlan({...latest,notification,notifications:{...latest.notifications,[chatId]:notification}});}
             });
             addEvent("telegram_sent",`${plan.name}：已发送${job.action==="new_plan"?"新上架":job.action==="sold_out"?"售罄":job.action==="stock_changed"?"库存变化":"补货"}卡片`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }else if(job.action==="restocked") {
-            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:formatCard(plan,settings,"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
+            const result=await telegramCall(settings,"sendMessage",{chat_id:chatId,text:notificationCard(plan,settings,"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
             // A probe may have changed stock while the network request was in flight.
             store.transaction(()=>{
               const latest=store.getPlan(plan.id),active=store.getMonitor(monitor.id);
@@ -86,7 +87,7 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
             addEvent("telegram_sent",`${plan.name}：已发送补货卡片`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }else if(target?.messageId){
             const soldOut=job.action==="sold_out",card=soldOut?(job.snapshot||plan):plan;
-            await telegramCall(settings,"editMessageText",{chat_id:target.chatId,message_id:target.messageId,text:formatCard(card,settings,soldOut?"sold_out":"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
+            await telegramCall(settings,"editMessageText",{chat_id:target.chatId,message_id:target.messageId,text:notificationCard(card,settings,soldOut?"sold_out":"restocked"),parse_mode:"HTML",disable_web_page_preview:true},{now:notificationNow()});
             addEvent("telegram_edited",`${plan.name}：${soldOut?"已编辑为售罄":"已更新库存卡片"}`,{providerId:plan.providerId,planId:plan.id,recipientKind:recipient.kind});
           }
           store.finishNotification(job.id,owner);

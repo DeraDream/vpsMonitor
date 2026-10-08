@@ -169,7 +169,7 @@ test('全部变化模式补货、数量变化和售罄都发新卡片，未发�
  await probe({available:false,quantity:0});
  await service.deliverNotifications();
  assert.deepEqual(calls.map(c=>c.method),['sendMessage','sendMessage','sendMessage']);
- assert.match(calls[0].text,/库存：3 台/);assert.match(calls[1].text,/库存变化：3 → 2/);assert.match(calls[2].text,/售罄/);assert.ok(calls.every(c=>c.text.includes('北京时间')));
+ assert.match(calls[0].text,/库存：3 台/);assert.match(calls[1].text,/库存变化：3 → 2/);assert.match(calls[2].text,/售罄/);assert.ok(calls.every(c=>!c.text.includes('检测时间')));
  assert.equal(store.listNotifications().length,0);
 }));
 test('全部变化模式不依赖已有补货 messageId，未知数量转公开数量也推送',()=>fixture(async({store,service,calls,probe})=>{

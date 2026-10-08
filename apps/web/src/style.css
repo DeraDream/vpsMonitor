@@ -2,6 +2,7 @@
 
 /* Let mobile navigation shrink inside the viewport instead of widening the page. */
 @media(max-width:900px){.sidebar{min-width:0}.brand{flex-shrink:0;padding:0}nav{min-width:0;flex:1}.preview{overflow-wrap:anywhere}.monitor-grid{grid-template-columns:minmax(0,1fr)}.card-actions{flex-wrap:wrap}.event{flex-wrap:wrap}.event div{min-width:0;overflow-wrap:anywhere}}
+.preview-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.preview-heading .preview-label{margin:18px 0 7px}.preview-send{padding:5px 9px;font-size:12px}
 
 .category-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0;overflow:visible;flex:none}.category-tab span{margin-left:6px}.monitor-categories{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.category-warning{color:var(--yellow);font-size:13px}
 /* Instance sign-in */

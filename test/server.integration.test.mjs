@@ -73,6 +73,12 @@ test('API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作', 
     assert.equal(visible.telegram.botTokenConfigured, true)
     assert.equal(Object.hasOwn(visible.telegram, 'botToken'), false)
 
+    const preview = await fetch(`${base}/api/telegram/preview`, { method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'sold_out' }) })
+    assert.equal(preview.status, 200)
+    const previewText = (await preview.json()).text
+    assert.match(previewText, /<s><a href=/)
+    assert.doesNotMatch(previewText, /检测时间/)
+
     const dbBytes = await readFile(join(dataDir, 'vps-monitor.db'))
     assert.equal(dbBytes.includes(Buffer.from('123456:test-secret-token')), false)
 

@@ -1,0 +1,2 @@
+camoufox==0.5.8
+nodriver==0.50.5

@@ -14,6 +14,7 @@ if [ "$RELEASE_DIR" != "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR/data"
 chown -R vpsmonitor:vpsmonitor "$INSTALL_DIR"
+bash "$INSTALL_DIR/deploy/install-browser-runtime.sh"
 if [ ! -f /etc/vps-monitor.env ]; then
   cp "$INSTALL_DIR/.env.example" /etc/vps-monitor.env
   chmod 600 /etc/vps-monitor.env
