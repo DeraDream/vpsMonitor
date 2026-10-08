@@ -85,6 +85,17 @@ try {
   const created = await request('/api/monitors', 'POST', { providerId: 'release-fixture', enabled: false, scope: 'all', intervalSeconds: 60 })
   assert.equal(created.status, 201)
   const monitor = await created.json()
+  const intervalSaved=await request(`/api/monitors/${monitor.id}`,'PATCH',{intervalSeconds:15});assert.equal(intervalSaved.status,200);assert.equal((await intervalSaved.json()).intervalSeconds,15);
+  assert.equal((await (await request('/api/events')).json()).items.length,0);
+  assert.equal((await fetch(base+'/api/logs')).status,401);
+  assert.equal((await (await request('/api/public/activity-settings')).json()).refreshIntervalSeconds,10);
+  assert.equal((await request('/api/activity/settings','PUT',{refreshIntervalSeconds:2})).status,200);
+  assert.equal((await (await request('/api/public/activity-settings')).json()).refreshIntervalSeconds,2);
+  const {logLevel}=await import(pathToFileURL(join(bundle,'apps/api/src/log-level.mjs')).href);
+  assert.equal(logLevel({PRIORITY:'6',MESSAGE:'[monitor] GreenCloud: 采集 401 个套餐，失败分类 0 个'}),'info');
+  assert.equal(logLevel({PRIORITY:'6',MESSAGE:'[monitor] GreenCloud: 采集 401 个套餐，失败分类 1 个'}),'error');
+  assert.ok((await readFile(join(bundle,'deploy/systemd/vps-monitor-api.service'),'utf8')).includes('SupplementaryGroups=systemd-journal'));
+
   assert.equal((await request(`/api/monitors/${monitor.id}/run`, 'POST', {})).status, 400)
   assert.equal((await request('/api/settings', 'PUT', { telegram: { botToken: 'release-fake-token', chatId: '-1' } })).status, 200)
   const oldCookie=cookie
@@ -97,6 +108,8 @@ try {
   let restartedReady=false
   for(let i=0;i<100;i++){try{if((await request('/api/auth/session')).ok){restartedReady=true;break}}catch{}await new Promise(resolve=>setTimeout(resolve,50))}
   assert.ok(restartedReady,'密码修改后的 API 重启失败')
+  assert.equal((await (await request('/api/public/activity-settings')).json()).refreshIntervalSeconds,2);
+  assert.equal((await (await request('/api/monitors')).json())[0].intervalSeconds,15);
   assert.equal((await request('/api/dashboard')).status,200)
   assert.equal((await request('/api/auth/login','POST',{username:'admin',password:'release-test-password'})).status,401)
   const newLogin=await request('/api/auth/login','POST',{username:'admin',password:'release-new-password'});assert.equal(newLogin.status,200);cookie=newLogin.headers.get('set-cookie').split(';')[0]
@@ -107,7 +120,7 @@ try {
   const release = JSON.parse(await readFile(join(bundle, 'release-manifest.json'), 'utf8'))
   assert.equal(release.version, version); assert.equal(release.builtLocally, true)
   const result = { version, filename, sha256: digest, verified: true,
-    checks: ['Passkey 生产依赖、HTTPS 限制、RP ID、用户验证及一次性挑战', 'Bot 生产模块、自定义间隔及 HTML 原地更新', 'SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '密码修改、旧会话失效及 API 重启后新密码有效', '解压后 Worker 心跳'] }
+    checks: ['动态分页接口、共享刷新设置及重启持久化', '15 秒监控间隔保存及重启持久化', '成功/失败日志级别及 systemd 读取权限', 'Passkey 生产依赖、HTTPS 限制、RP ID、用户验证及一次性挑战', 'Bot 生产模块、自定义间隔及 HTML 原地更新', 'SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '密码修改、旧会话失效及 API 重启后新密码有效', '解压后 Worker 心跳'] }
   await writeFile(join(root, 'releases/verification.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify(result, null, 2))
 } finally { for (const child of children.reverse()) await stop(child); await rm(dir, { recursive: true, force: true }) }

@@ -4,7 +4,7 @@ import { groupPlans } from '../plan-groups.js'
 import PlanCategoryTabs from './PlanCategoryTabs.vue'
 import PlanDetails from './PlanDetails.vue'
 import { onMounted,onUnmounted } from 'vue'
-const props = defineProps({ dialog: Object, providers: Array, monitors: Array })
+const props = defineProps({ dialog: Object, providers: Array, monitors: Array, saving: Boolean })
 const emit = defineEmits(['close', 'save', 'change-provider'])
 const form = reactive({ providerId: props.dialog.providerId, enabled: props.dialog.monitor?.enabled !== false,
   scope: props.dialog.monitor?.scope || 'all', planIds: [...(props.dialog.monitor?.planIds || [])],
@@ -23,7 +23,8 @@ const visiblePlans=computed(()=>filteredPlans.value.slice((Math.min(page.value,p
 watch(activeId,()=>{locationFilter.value='';search.value='';page.value=1})
 watch([search,locationFilter],()=>page.value=1)
 function statusLabel(plan){return !plan.available?'缺货':plan.availabilitySource==='order-button'?'可订购 · 数量未公开':'有货'}
-function submit() { if(!form.providerId||props.dialog.loading||props.dialog.error)return; emit('save', { ...form, planIds: [...form.planIds], categoryIds:[...form.categoryIds] }) }
+const intervalInput=ref(null),formError=ref('')
+function submit() { if(!form.providerId||props.dialog.loading||props.dialog.error||props.saving)return;formError.value='';if(!intervalInput.value?.checkValidity()||!Number.isInteger(form.intervalSeconds)||form.intervalSeconds<=0){formError.value='轮询间隔请输入正整数秒数（最多 3600 秒）';intervalInput.value?.reportValidity();return;} emit('save', { ...form, planIds: [...form.planIds], categoryIds:[...form.categoryIds] }) }
 function selectCategory() {
   form.scope = 'selected'
   form.planIds = [...new Set([...form.planIds, ...active.value.plans.map(plan => plan.id)])]
@@ -101,9 +102,9 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <div v-if="pageCount>1" class="plan-pagination"><button class="button ghost" :disabled="page<=1" @click="page--">上一页</button><span class="hint">第 {{Math.min(page,pageCount)}} / {{pageCount}} 页 · {{filteredPlans.length}} 个套餐</span><button class="button ghost" :disabled="page>=pageCount" @click="page++">下一页</button></div>
       </section>
       <p class="hint" v-if="form.scope === 'selected'">共选择 {{ form.planIds.length }} 个套餐</p>
-      <div class="field"><label>轮询间隔（秒）</label><input type="number" min="30" max="3600" v-model.number="form.intervalSeconds"></div>
+      <div class="field"><label for="monitor-interval">轮询间隔（秒）</label><input id="monitor-interval" ref="intervalInput" type="number" max="3600" step="1" required :disabled="saving" v-model.number="form.intervalSeconds"><small class="hint">输入正整数秒数，点击“保存任务”后生效。</small></div><p v-if="formError" class="category-warning" role="alert">{{formError}}</p>
       </template>
-      <div class="controls modal-actions"><button class="button" :disabled="!form.providerId||dialog.loading||!!dialog.error" @click="submit">保存任务</button><button class="button ghost" @click="$emit('close')">取消</button></div>
+      <div class="controls modal-actions"><button class="button" :disabled="!form.providerId||dialog.loading||!!dialog.error||saving" @click="submit">{{saving?'保存中…':'保存任务'}}</button><button class="button ghost" @click="$emit('close')">取消</button></div>
     </template>
   </section></div>
 </template>

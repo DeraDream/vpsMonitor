@@ -6,7 +6,7 @@ import { quietHoursStatus } from "./notification-policy.mjs";
 
 export function createService(store, {now: notificationNow=Date.now}={}) {
   const snapshot=plan=>Object.fromEntries(["name","price","billingCycle","specs","location","quantity","available","buyUrl","categoryName","cpu","ram","storage","bandwidth","portSpeed"].filter(key=>plan[key]!==undefined).map(key=>[key,plan[key]]));
-  const addEvent = (type,message,extra={}) => store.addEvent({id:`event_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),type,message,...extra});
+  const addEvent = (type,message,extra={}) => { if(!["new_plan","restocked","sold_out","stock_changed","delisted"].includes(type))( /failed|partial/.test(type)?console.error:console.log)(`[${type}] ${message}${extra.error?" — "+extra.error:""}`);return store.addEvent({id:`event_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),type,message,...extra}); };
   function monitorView(monitor) {
     const provider=store.getProvider(monitor.providerId);
     return {...monitor,providerName:provider?.name||"已移除商家",providerAdapterKey:provider?.adapterKey||"unknown",planCount:store.listPlans(monitor.providerId).filter(p=>p.listed!==false&&monitored(p,monitor)).length,categories:(provider?.categories||[]).map(category=>{const plans=store.listPlans(monitor.providerId).filter(p=>p.listed!==false&&p.categoryId===category.id);return {...category,...monitor.categoryStatuses?.[category.id],planCount:plans.length,inStock:plans.filter(p=>p.available&&p.availabilitySource!=="order-button").length,orderable:plans.filter(p=>p.available&&p.availabilitySource==="order-button").length}})};
@@ -21,7 +21,9 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
     const planIds=[...new Set(Array.isArray(input.planIds)?input.planIds.filter(id=>typeof id==="string"):[])];
     const valid=new Set(store.listPlans(provider.id).map(p=>p.id)); if(planIds.some(id=>!valid.has(id))) throw new Error("包含不属于该商家的套餐");
     if(scope==="selected"&&!planIds.length) throw new Error("请选择至少一个套餐，或改为监控全部套餐");
-    return {providerId:provider.id,scope,planIds,categoryIds,intervalSeconds:Math.max(30,Math.min(3600,Number(input.intervalSeconds)||60)),enabled:Boolean(input.enabled)};
+    const requestedInterval=input.intervalSeconds??provider.defaultIntervalSeconds??60;
+    if(requestedInterval===''||!Number.isInteger(Number(requestedInterval))||Number(requestedInterval)<=0)throw new Error('轮询间隔必须为正整数秒数');
+    return {providerId:provider.id,scope,planIds,categoryIds,intervalSeconds:Math.min(3600,Number(requestedInterval)),enabled:Boolean(input.enabled)};
   }
   function enqueue(action, plan, monitor, onlyRecipient=null) {
     const t=store.getSettings().telegram;
@@ -134,6 +136,7 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
       }
       if(!batch.failures.length)active.catalogInitialized=true;
       active.lastRunAt=new Date().toISOString();active.lastDurationMs=Date.now()-started;active.lastError=batch.failures.length?batch.failures.map(f=>`${f.categoryName}：${f.error}`).join("；"):null;active.consecutiveFailures=batch.failures.length?(active.consecutiveFailures||0)+1:0;store.putMonitor(active);
+      console.log(`[monitor] ${provider.name}: 采集 ${current.length} 个套餐，失败分类 ${batch.failures.length} 个`);
       if(batch.failures.length)addEvent("monitor_partial",`${provider.name}：探测到 ${current.length} 个套餐${batch.failures.length?"，部分系列失败，保留上次状态":""}`,{providerId:provider.id});return monitorView(active);
     });
   }

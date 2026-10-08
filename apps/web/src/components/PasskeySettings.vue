@@ -5,6 +5,7 @@ import { api } from '../api.js'
 const keys=ref([]),name=ref('我的设备'),password=ref(''),busy=ref(false),message=ref(''),supported=ref(false)
 const secure=location.protocol==='https:'&&window.isSecureContext&&browserSupportsWebAuthn()
 async function reload(){const config=await api('/api/auth/session');supported.value=secure&&config.passkeySupported;if(supported.value)keys.value=await api('/api/auth/passkeys')}
+defineExpose({refresh:reload})
 onMounted(()=>reload().catch(e=>message.value=e.message))
 async function act(fn){if(busy.value)return;busy.value=true;message.value='';try{await fn();password.value='';await reload();message.value='Passkey 设置已保存'}catch(e){message.value=e.name==='NotAllowedError'?'操作已取消或设备验证超时':e.message}finally{busy.value=false}}
 async function add(){await act(async()=>{const request=await api('/api/auth/passkeys/register/options',{method:'POST',body:JSON.stringify({currentPassword:password.value})});const response=await startRegistration({optionsJSON:request.options});await api('/api/auth/passkeys/register/verify',{method:'POST',body:JSON.stringify({requestId:request.requestId,response,name:name.value})})})}

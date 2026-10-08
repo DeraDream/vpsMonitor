@@ -50,11 +50,16 @@ test('API 编辑、删除、校验、事件查询和重启持久化；Worker 心
     assert.equal((await fetch(base + '/api/settings')).status, 401)
     const created = await request('/api/monitors', 'POST', { providerId: 'fixture', scope: 'all', enabled: false, intervalSeconds: 1 })
     assert.equal(created.status, 201)
-    assert.equal(created.data.intervalSeconds, 30)
+    assert.equal(created.data.intervalSeconds, 1)
     const id = created.data.id
     assert.equal((await request('/api/monitors', 'POST', { providerId: 'fixture' })).status, 400)
     assert.equal((await request('/api/monitors', 'POST', { providerId: 'missing' })).status, 400)
     assert.equal((await request(`/api/monitors/${id}`, 'PATCH', { scope: 'selected', planIds: [] })).status, 400)
+    for(const intervalSeconds of [1,5,15]){
+      const saved=await request(`/api/monitors/${id}`,'PATCH',{intervalSeconds});assert.equal(saved.status,200);assert.equal(saved.data.intervalSeconds,intervalSeconds);assert.equal((await request('/api/monitors')).data[0].intervalSeconds,intervalSeconds);
+    }
+    for(const intervalSeconds of [0,-1,'',1.5])assert.equal((await request(`/api/monitors/${id}`,'PATCH',{intervalSeconds})).status,400);
+    const partial=await request('/api/providers/fixture/monitor','PATCH',{enabled:false});assert.equal(partial.data.intervalSeconds,15);
     const edited = await request(`/api/monitors/${id}`, 'PATCH', { intervalSeconds: 120, enabled: true })
     assert.equal(edited.data.intervalSeconds, 120)
     assert.equal(edited.data.enabled, true)
@@ -62,7 +67,7 @@ test('API 编辑、删除、校验、事件查询和重启持久化；Worker 心
     const failed = (await request('/api/monitors')).data[0]
     assert.equal(failed.consecutiveFailures, 1)
     assert.match(failed.lastError, /尚未安装/)
-    assert.deepEqual((await request('/api/events')).data, []);assert.ok(store.listEvents().some(e=>e.type==='monitor_failed'))
+    assert.deepEqual((await request('/api/events')).data, {items:[],nextCursor:null});assert.ok(store.listEvents().some(e=>e.type==='monitor_failed'))
     await request(`/api/monitors/${id}`, 'PATCH', { enabled: false })
     await request('/api/settings', 'PUT', { telegram: { botToken: 'test-only-secret', chatId: '-123' } })
     await stop(api); await startApi(); await ready()

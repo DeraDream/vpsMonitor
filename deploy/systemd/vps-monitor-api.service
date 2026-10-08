@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=vpsmonitor
+SupplementaryGroups=systemd-journal
 WorkingDirectory=/opt/vps-monitor
 EnvironmentFile=/etc/vps-monitor.env
 Environment=HOST=127.0.0.1

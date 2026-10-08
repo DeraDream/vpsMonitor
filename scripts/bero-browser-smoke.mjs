@@ -38,9 +38,10 @@ try {
   await page.getByLabel('用户名',{exact:true}).fill('admin')
   await page.getByLabel('密码',{exact:true}).fill('bero-browser-password')
   await page.getByRole('button',{name:'登录控制台'}).click()
-  const ryzenButton = () => page.locator('.provider-categories').getByRole('button', { name: /Ryzen VPS/ })
-  const kvmButton = () => page.locator('.provider-categories').getByRole('button', { name: /KVM Rootserver/ })
-  await check('商家卡片分别显示两个系列入口', async () => { await ryzenButton().waitFor(); assert.equal(await page.locator('.provider-categories button').count(), 2) })
+  const card=()=>page.locator('.provider-card').filter({has:page.getByRole('heading',{name:'Bero Host',exact:true})});
+  const categoryButton=id=>({click:async()=>{await card().locator('select').selectOption(id);await card().getByRole('button',{name:'查看分类套餐'}).click()}});
+  const ryzenButton=()=>categoryButton('ryzen'),kvmButton=()=>categoryButton('kvm');
+  await check('商家卡片统一分类选择器包含两个系列',async()=>{await card().locator('select').waitFor();assert.equal(await card().locator('option').count(),2)});
   await check('Ryzen 套餐单独显示五张卡片', async () => {
     await ryzenButton().click(); await page.getByRole('tabpanel', { name: 'Ryzen VPS' }).waitFor()
     assert.equal(await page.locator('.plan-card').count(), 5)
@@ -92,7 +93,7 @@ try {
     $('body').append(card); currentRyzen = $.html()
     await service.runMonitorSafe(store.getMonitorByProvider('bero-host'))
     await page.getByRole('button', { name: '立即刷新', exact: true }).click()
-    await page.waitForFunction(() => document.querySelector('.provider-categories')?.textContent.includes('6 个套餐'))
+    await page.waitForFunction(() => document.querySelector('#provider-category-bero-host')?.textContent.includes('6 个套餐'))
     await ryzenButton().click(); await page.getByRole('tabpanel', { name: 'Ryzen VPS' }).waitFor()
     assert.equal(await page.locator('.plan-card').count(), 6)
     await page.getByRole('tab', { name: /KVM Rootserver/ }).click(); assert.equal(await page.locator('.plan-card').count(), 5)
@@ -101,7 +102,7 @@ try {
   await check('单系列失败显示保留状态提示，其套餐不消失、不变成售罄', async () => {
     failKvm = true; await service.runMonitorSafe(store.getMonitorByProvider('bero-host'))
     await page.getByRole('button', { name: '立即刷新', exact: true }).click()
-    await page.locator('.provider-categories .category-warning').waitFor()
+    await card().locator('select').selectOption('kvm');await card().locator('.merchant-category-heading .warning').waitFor()
     await kvmButton().click(); await page.locator('.dialog-card .category-warning').waitFor()
     assert.equal(await page.locator('.plan-card').count(), 5)
     assert.ok((await page.locator('.plan-card').first().textContent()).includes('上次状态：'))

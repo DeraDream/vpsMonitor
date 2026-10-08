@@ -1,0 +1,19 @@
+{
+  "version": "1.9.0",
+  "tests": 94,
+  "passed": 94,
+  "failed": 0,
+  "syntaxCheck": "PASS",
+  "frontendBuild": "PASS",
+  "releaseVerification": "PASS",
+  "browserChecks": [
+    "前后台日期分组、类型筛选与滚动分页",
+    "刷新间隔持久化及前台同步",
+    "后台刷新加载动画与提示位置",
+    "个人中心密码修改及 HTTPS Passkey 管理",
+    "商家卡片统一尺寸、分类套餐与编辑监控",
+    "正整数监控间隔保存与回读",
+    "日志分类与运行服务访问权限",
+    "320px/390px 手机布局"
+  ]
+}

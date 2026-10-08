@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { encryptToken } from "../../core/src/crypto.mjs";
 
 const DEFAULT_SETTINGS = {
+  activity: { refreshIntervalSeconds: 10 },
   telegram: { botTokenEncrypted: "", chatId: "", channelEnabled: true, personalChatId: "", personalEnabled: false, enabled: false, showBuyLink: true, template: "standard", notificationMode: "restock", notifyNewPlans: true, quietHours: { enabled: false, start: "23:00", end: "08:00" } },
   updates: { repository: "DeraDream/vpsMonitor", branch: "main" }
 };
@@ -94,7 +95,15 @@ class Store {
     const query=filtered?`SELECT payload FROM events WHERE json_extract(payload, '$.type') IN (${types.map(()=>'?').join(',')}) ORDER BY at DESC LIMIT ?`:"SELECT payload FROM events ORDER BY at DESC LIMIT ?";
     return this.db.prepare(query).all(...(filtered?[...types,limit]:[limit])).map(r=>JSON.parse(r.payload));
   }
-  getSettings(){const saved=JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='settings'").get().value);return {...saved,updates:{...DEFAULT_SETTINGS.updates,...saved.updates},telegram:{...DEFAULT_SETTINGS.telegram,...saved.telegram,quietHours:{...DEFAULT_SETTINGS.telegram.quietHours,...saved.telegram?.quietHours}}};}
+  pageEvents({types,limit=30,cursor=null}={}){
+    const clauses=[],args=[];
+    if(types?.length){clauses.push(`json_extract(payload, '$.type') IN (${types.map(()=>'?').join(',')})`);args.push(...types);}
+    if(cursor){clauses.push('(at < ? OR (at = ? AND id < ?))');args.push(cursor.at,cursor.at,cursor.id);}
+    const rows=this.db.prepare(`SELECT payload FROM events ${clauses.length?'WHERE '+clauses.join(' AND '):''} ORDER BY at DESC,id DESC LIMIT ?`).all(...args,limit+1).map(row=>JSON.parse(row.payload));
+    const hasMore=rows.length>limit,items=rows.slice(0,limit),last=items.at(-1);
+    return {items,nextCursor:hasMore?Buffer.from(JSON.stringify({at:last.at,id:last.id})).toString('base64url'):null};
+  }
+  getSettings(){const saved=JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='settings'").get().value);return {...saved,activity:{...DEFAULT_SETTINGS.activity,...saved.activity},updates:{...DEFAULT_SETTINGS.updates,...saved.updates},telegram:{...DEFAULT_SETTINGS.telegram,...saved.telegram,quietHours:{...DEFAULT_SETTINGS.telegram.quietHours,...saved.telegram?.quietHours}}};}
   setSettings(v){this.db.prepare("UPDATE kv SET value=? WHERE key='settings'").run(JSON.stringify(v));}
   getRuntime(){return JSON.parse(this.db.prepare("SELECT value FROM kv WHERE key='runtime'").get().value);}
   setRuntime(v){this.db.prepare("UPDATE kv SET value=? WHERE key='runtime'").run(JSON.stringify(v));}
