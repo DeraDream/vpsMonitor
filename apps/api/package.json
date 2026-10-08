@@ -1,6 +1,6 @@
 {
   "name": "@vps-monitor/api",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "dev": "node --watch src/server.mjs"
   },
   "dependencies": {
+    "@simplewebauthn/server": "^14.0.3",
     "@vps-monitor/adapters": "*",
     "@vps-monitor/core": "*",
     "@vps-monitor/db": "*"

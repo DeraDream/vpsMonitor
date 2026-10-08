@@ -6,3 +6,5 @@ export * from "./service.mjs";
 export * from "./bootstrap.mjs";
 
 export * from "./notification-policy.mjs";
+
+export * from './bot-management.mjs';

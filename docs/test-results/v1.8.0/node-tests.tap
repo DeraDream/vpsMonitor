@@ -1,0 +1,588 @@
+
+> vps-monitor@1.8.0 test
+> node --test
+
+TAP version 13
+# (node:240720) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 登录会话：无弹窗、错误密码、持久化、过期、退出、来源校验与限流
+ok 1 - 登录会话：无弹窗、错误密码、持久化、过期、退出、来源校验与限流
+  ---
+  duration_ms: 404.568057
+  type: 'test'
+  ...
+# (node:240756) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 实际页面样本：两个系列各五个套餐，售罄与有货逐卡判断
+ok 2 - 实际页面样本：两个系列各五个套餐，售罄与有货逐卡判断
+  ---
+  duration_ms: 21.99945
+  type: 'test'
+  ...
+# Subtest: 自动发现任意新名称、ID 和数量，不写死五个套餐
+ok 3 - 自动发现任意新名称、ID 和数量，不写死五个套餐
+  ---
+  duration_ms: 11.354547
+  type: 'test'
+  ...
+# Subtest: 英文 Sold out 与德文标记等价
+ok 4 - 英文 Sold out 与德文标记等价
+  ---
+  duration_ms: 16.053231
+  type: 'test'
+  ...
+# Subtest: 套餐名称包含售罄文字不会被当成状态标记
+ok 5 - 套餐名称包含售罄文字不会被当成状态标记
+  ---
+  duration_ms: 5.757235
+  type: 'test'
+  ...
+# Subtest: 套餐顺序变化不改变 ID，非套餐配置按钮不会被解析
+ok 6 - 套餐顺序变化不改变 ID，非套餐配置按钮不会被解析
+  ---
+  duration_ms: 9.341134
+  type: 'test'
+  ...
+# Subtest: 重复 ID、空页面、字段缺失和不明确库存样式拒绝解析
+ok 7 - 重复 ID、空页面、字段缺失和不明确库存样式拒绝解析
+  ---
+  duration_ms: 17.482036
+  type: 'test'
+  ...
+# Subtest: 请求只读取两个商品页，使用超时；失败系列不会阻断成功系列
+ok 8 - 请求只读取两个商品页，使用超时；失败系列不会阻断成功系列
+  ---
+  duration_ms: 5.054664
+  type: 'test'
+  ...
+# Subtest: 非 HTML 响应、两页失败均返回明确错误，不伪装成缺货
+ok 9 - 非 HTML 响应、两页失败均返回明确错误，不伪装成缺货
+  ---
+  duration_ms: 0.481214
+  type: 'test'
+  ...
+# Subtest: 分组工具和 TG 消息保留系列，空系列仍独立显示
+ok 10 - 分组工具和 TG 消息保留系列，空系列仍独立显示
+  ---
+  duration_ms: 3.325927
+  type: 'test'
+  ...
+# Subtest: 内置商家自动创建全部监控，暂停和删除不会在启动时被重置
+ok 11 - 内置商家自动创建全部监控，暂停和删除不会在启动时被重置
+  ---
+  duration_ms: 5.253197
+  type: 'test'
+  ...
+# Subtest: 页面上架下架、单页失败与恢复：只更新完整成功系列，保留历史状态
+ok 12 - 页面上架下架、单页失败与恢复：只更新完整成功系列，保留历史状态
+  ---
+  duration_ms: 37.003473
+  type: 'test'
+  ...
+# Subtest: 套餐公共模型保存官网所有配置：CPU/RAM/NVMe/IPv4/IPv6/Backups/周期和新增字段
+ok 13 - 套餐公共模型保存官网所有配置：CPU/RAM/NVMe/IPv4/IPv6/Backups/周期和新增字段
+  ---
+  duration_ms: 14.445231
+  type: 'test'
+  ...
+# (node:240768) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Bot 私聊鉴权、通知开关独立、确认码单次消费、间隔和库存分页
+ok 14 - Bot 私聊鉴权、通知开关独立、确认码单次消费、间隔和库存分页
+  ---
+  duration_ms: 5.305044
+  type: 'test'
+  ...
+# Subtest: Bot 自定义间隔：严格范围、单位、重试、取消、过期和权限隔离
+ok 15 - Bot 自定义间隔：严格范围、单位、重试、取消、过期和权限隔离
+  ---
+  duration_ms: 3.115271
+  type: 'test'
+  ...
+# Subtest: Bot 卡片 HTML 转义、菜单原地更新、分页与购买按钮对应
+ok 16 - Bot 卡片 HTML 转义、菜单原地更新、分页与购买按钮对应
+  ---
+  duration_ms: 1.067315
+  type: 'test'
+  ...
+# (node:240776) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 旧 store.json 自动迁移到 SQLite 且保留监控数据
+ok 17 - 旧 store.json 自动迁移到 SQLite 且保留监控数据
+  ---
+  duration_ms: 3.969986
+  type: 'test'
+  ...
+# (node:240787) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 长时间抓取期间 Worker 心跳持续更新，初始抓取时 SIGTERM 能正确退出
+ok 18 - 长时间抓取期间 Worker 心跳持续更新，初始抓取时 SIGTERM 能正确退出
+  ---
+  duration_ms: 2866.331518
+  type: 'test'
+  ...
+# (node:240811) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: GreenCloud 独立 Adapter 动态发现分类，排除语言、外站和产品链接
+ok 19 - GreenCloud 独立 Adapter 动态发现分类，排除语言、外站和产品链接
+  ---
+  duration_ms: 1.651962
+  type: 'test'
+  ...
+# Subtest: 明确数量优先于 Order Now：零库存、正库存、库存变化与官网配置
+ok 20 - 明确数量优先于 Order Now：零库存、正库存、库存变化与官网配置
+  ---
+  duration_ms: 12.22468
+  type: 'test'
+  ...
+# Subtest: 存储混合磁盘与合并 IPv4/IPv6 不丢失信息
+ok 21 - 存储混合磁盘与合并 IPv4/IPv6 不丢失信息
+  ---
+  duration_ms: 2.078675
+  type: 'test'
+  ...
+# Subtest: 不公开数量标为可订购，描述型配置和 Starting from 保留原文
+ok 22 - 不公开数量标为可订购，描述型配置和 Starting from 保留原文
+  ---
+  duration_ms: 1.85843
+  type: 'test'
+  ...
+# Subtest: 代理类套餐使用订单真实 PID，不能使用卡片序号充当产品 ID
+ok 23 - 代理类套餐使用订单真实 PID，不能使用卡片序号充当产品 ID
+  ---
+  duration_ms: 2.262529
+  type: 'test'
+  ...
+# Subtest: 空分类是成功结果；异常页、重复 ID、价格缺失、数量未知和恶意链接拒绝
+ok 24 - 空分类是成功结果；异常页、重复 ID、价格缺失、数量未知和恶意链接拒绝
+  ---
+  duration_ms: 17.586773
+  type: 'test'
+  ...
+# Subtest: 分类批量请求最多两个并发，单类失败保留其旧状态，全失败报告错误
+ok 25 - 分类批量请求最多两个并发，单类失败保留其旧状态，全失败报告错误
+  ---
+  duration_ms: 63.789262
+  type: 'test'
+  ...
+# Subtest: 动态分类持久化、分类监控及初始基线；之后新增和补货产生通知事件
+ok 26 - 动态分类持久化、分类监控及初始基线；之后新增和补货产生通知事件
+  ---
+  duration_ms: 8.593681
+  type: 'test'
+  ...
+# Subtest: 目录异常时为已有每个分类记录失败，不把旧库存当成最新状态
+ok 27 - 目录异常时为已有每个分类记录失败，不把旧库存当成最新状态
+  ---
+  duration_ms: 1.008003
+  type: 'test'
+  ...
+# Subtest: 官网有货和售罄套餐均保留各自专属购买地址，TG 不使用分类页替代
+ok 28 - 官网有货和售罄套餐均保留各自专属购买地址，TG 不使用分类页替代
+  ---
+  duration_ms: 5.336845
+  type: 'test'
+  ...
+# Subtest: 统一套餐模型拒绝无效状态
+ok 29 - 统一套餐模型拒绝无效状态
+  ---
+  duration_ms: 0.471506
+  type: 'test'
+  ...
+# Subtest: 补货周期仅在缺货转有货时创建新通知
+ok 30 - 补货周期仅在缺货转有货时创建新通知
+  ---
+  duration_ms: 0.16004
+  type: 'test'
+  ...
+# Subtest: 库存减少和售罄编辑当前卡片
+ok 31 - 库存减少和售罄编辑当前卡片
+  ---
+  duration_ms: 0.073237
+  type: 'test'
+  ...
+# Subtest: 重试采用有上限的指数退避
+ok 32 - 重试采用有上限的指数退避
+  ---
+  duration_ms: 0.488477
+  type: 'test'
+  ...
+# (node:240830) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 首次基线不刷上架；新分类与范围外新套餐自动解析、推送一次，售罄新套餐也通知
+ok 33 - 首次基线不刷上架；新分类与范围外新套餐自动解析、推送一次，售罄新套餐也通知
+  ---
+  duration_ms: 20.647711
+  type: 'test'
+  ...
+# Subtest: 关闭新套餐开关仍记录动态，开启不补发已有套餐，关闭后取消排队的新套餐
+ok 34 - 关闭新套餐开关仍记录动态，开启不补发已有套餐，关闭后取消排队的新套餐
+  ---
+  duration_ms: 3.005194
+  type: 'test'
+  ...
+# Subtest: TG 未配置和无旧卡片也记录售罄；重复探测不产生成功事件，失败分类不误判下架
+ok 35 - TG 未配置和无旧卡片也记录售罄；重复探测不产生成功事件，失败分类不误判下架
+  ---
+  duration_ms: 2.507009
+  type: 'test'
+  ...
+# Subtest: 免打扰与暂停监控保留新套餐任务，恢复后发新上架快照，库存模式切换不丢任务
+ok 36 - 免打扰与暂停监控保留新套餐任务，恢复后发新上架快照，库存模式切换不丢任务
+  ---
+  duration_ms: 2.438
+  type: 'test'
+  ...
+# Subtest: 首次部分分类失败，恢复分类先建基线，不误报该分类所有旧套餐为新品
+ok 37 - 首次部分分类失败，恢复分类先建基线，不误报该分类所有旧套餐为新品
+  ---
+  duration_ms: 2.405278
+  type: 'test'
+  ...
+# Subtest: 北京时间免打扰跨午夜：开始包含、结束不包含，计算下次结束时间
+ok 38 - 北京时间免打扰跨午夜：开始包含、结束不包含，计算下次结束时间
+  ---
+  duration_ms: 0.883329
+  type: 'test'
+  ...
+# Subtest: 同一天免打扰区间与关闭开关，不依赖 VPS 本地时区
+ok 39 - 同一天免打扰区间与关闭开关，不依赖 VPS 本地时区
+  ---
+  duration_ms: 6.798428
+  type: 'test'
+  ...
+# Subtest: 免打扰输入校验：非法时刻、相同时间、字符串布尔值和未知字段拒绝
+ok 40 - 免打扰输入校验：非法时刻、相同时间、字符串布尔值和未知字段拒绝
+  ---
+  duration_ms: 0.220303
+  type: 'test'
+  ...
+# (node:240849) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 模拟完整补货周期：补货发送、库存变化编辑、售罄编辑、再次补货新消息
+ok 41 - 模拟完整补货周期：补货发送、库存变化编辑、售罄编辑、再次补货新消息
+  ---
+  duration_ms: 23.133579
+  type: 'test'
+  ...
+# Subtest: 已售罄的积压补货通知应取消
+ok 42 - 已售罄的积压补货通知应取消
+  ---
+  duration_ms: 2.063435
+  type: 'test'
+  ...
+# Subtest: 关闭 TG 后积压队列应停止发送
+ok 43 - 关闭 TG 后积压队列应停止发送
+  ---
+  duration_ms: 1.624861
+  type: 'test'
+  ...
+# Subtest: 两个投递者不能发送同一 job 两次
+ok 44 - 两个投递者不能发送同一 job 两次
+  ---
+  duration_ms: 1.991151
+  type: 'test'
+  ...
+# Subtest: 删除任务后待投递通知应停止发送
+ok 45 - 删除任务后待投递通知应停止发送
+  ---
+  duration_ms: 1.470682
+  type: 'test'
+  ...
+# Subtest: Telegram message is not modified 应视为投递成功
+ok 46 - Telegram message is not modified 应视为投递成功
+  ---
+  duration_ms: 2.405177
+  type: 'test'
+  ...
+# Subtest: Telegram 标签需要转义 HTML
+ok 47 - Telegram 标签需要转义 HTML
+  ---
+  duration_ms: 0.18095
+  type: 'test'
+  ...
+# Subtest: 两个独立数据库连接的投递者只能发送一次
+ok 48 - 两个独立数据库连接的投递者只能发送一次
+  ---
+  duration_ms: 6.065052
+  type: 'test'
+  ...
+# Subtest: 通知暂停保留任务，重新启用后发送
+ok 49 - 通知暂停保留任务，重新启用后发送
+  ---
+  duration_ms: 2.040964
+  type: 'test'
+  ...
+# Subtest: 多次未发送补货周期仅发送当前周期
+ok 50 - 多次未发送补货周期仅发送当前周期
+  ---
+  duration_ms: 2.878155
+  type: 'test'
+  ...
+# Subtest: 积压售罄编辑保留旧周期 messageId，下一周期独立发送
+ok 51 - 积压售罄编辑保留旧周期 messageId，下一周期独立发送
+  ---
+  duration_ms: 4.044166
+  type: 'test'
+  ...
+# Subtest: 发送期间售罄不会覆盖最新状态，随后补发售罄编辑
+ok 52 - 发送期间售罄不会覆盖最新状态，随后补发售罄编辑
+  ---
+  duration_ms: 2.318966
+  type: 'test'
+  ...
+# Subtest: 探测期间删除任务不会重新创建任务
+ok 53 - 探测期间删除任务不会重新创建任务
+  ---
+  duration_ms: 1.350878
+  type: 'test'
+  ...
+# Subtest: Telegram 403 永久错误停止重试并记录原因
+ok 54 - Telegram 403 永久错误停止重试并记录原因
+  ---
+  duration_ms: 1.636172
+  type: 'test'
+  ...
+# Subtest: 全部变化模式补货、数量变化和售罄都发新卡片，未发送旧卡片也能检测变化
+ok 55 - 全部变化模式补货、数量变化和售罄都发新卡片，未发送旧卡片也能检测变化
+  ---
+  duration_ms: 2.967083
+  type: 'test'
+  ...
+# Subtest: 全部变化模式不依赖已有补货 messageId，未知数量转公开数量也推送
+ok 56 - 全部变化模式不依赖已有补货 messageId，未知数量转公开数量也推送
+  ---
+  duration_ms: 2.176399
+  type: 'test'
+  ...
+# Subtest: 免打扰暂停发送，跨午夜结束后保留历史补货、库存和售罄快照逐条补发
+ok 57 - 免打扰暂停发送，跨午夜结束后保留历史补货、库存和售罄快照逐条补发
+  ---
+  duration_ms: 2.936907
+  type: 'test'
+  ...
+# Subtest: 免打扰也暂停默认模式的卡片编辑，结束后保留原 messageId
+ok 58 - 免打扰也暂停默认模式的卡片编辑，结束后保留原 messageId
+  ---
+  duration_ms: 2.001038
+  type: 'test'
+  ...
+# Subtest: TG 底层统一免打扰，手动发送和编辑都不能绕过，且不发网络请求
+ok 59 - TG 底层统一免打扰，手动发送和编辑都不能绕过，且不发网络请求
+  ---
+  duration_ms: 1.745999
+  type: 'test'
+  ...
+# Subtest: 免打扰队列和新设置持久化，另一个进程结束后可以补发
+ok 60 - 免打扰队列和新设置持久化，另一个进程结束后可以补发
+  ---
+  duration_ms: 1.781826
+  type: 'test'
+  ...
+# Subtest: 更改监控套餐范围后，原范围的积压通知不能继续发送
+ok 61 - 更改监控套餐范围后，原范围的积压通知不能继续发送
+  ---
+  duration_ms: 1.610737
+  type: 'test'
+  ...
+# Subtest: 切回默认补货模式，待发送的全部变化库存和售罄提醒取消
+ok 62 - 切回默认补货模式，待发送的全部变化库存和售罄提醒取消
+  ---
+  duration_ms: 2.035593
+  type: 'test'
+  ...
+# Subtest: 频道和个人私聊分别发送、编辑、售罄和开启下一补货周期
+ok 63 - 频道和个人私聊分别发送、编辑、售罄和开启下一补货周期
+  ---
+  duration_ms: 5.274958
+  type: 'test'
+  ...
+# Subtest: 个人投递失败独立重试，不重复频道；个人单目标和去重兼容
+ok 64 - 个人投递失败独立重试，不重复频道；个人单目标和去重兼容
+  ---
+  duration_ms: 7.168034
+  type: 'test'
+  ...
+# Subtest: 完整在线更新：真实解压、校验、备份、安装、重启确认；保留数据库和登录配置并拒绝重复更新
+ok 65 - 完整在线更新：真实解压、校验、备份、安装、重启确认；保留数据库和登录配置并拒绝重复更新
+  ---
+  duration_ms: 1178.196679
+  type: 'test'
+  ...
+# Subtest: 校验失败不修改部署，显示可重试失败状态
+ok 66 - 校验失败不修改部署，显示可重试失败状态
+  ---
+  duration_ms: 22.203514
+  type: 'test'
+  ...
+# Subtest: 错误附件和越界链接拒绝；正常 scoped workspace 链接可解压
+ok 67 - 错误附件和越界链接拒绝；正常 scoped workspace 链接可解压
+  ---
+  duration_ms: 50.210998
+  type: 'test'
+  ...
+# Subtest: 安装中途写入失败恢复已替换目录，保留旧部署
+ok 68 - 安装中途写入失败恢复已替换目录，保留旧部署
+  ---
+  duration_ms: 22.63322
+  type: 'test'
+  ...
+# Subtest: 源码更新依赖安装失败回退原修订和部署，不重启错误版本
+ok 69 - 源码更新依赖安装失败回退原修订和部署，不重启错误版本
+  ---
+  duration_ms: 18.409607
+  type: 'test'
+  ...
+# (node:240935) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Passkey HTTPS 限制、会话与密码验证、RP 来源、失败挑战不能重放
+ok 70 - Passkey HTTPS 限制、会话与密码验证、RP 来源、失败挑战不能重放
+  ---
+  duration_ms: 4.575475
+  type: 'test'
+  ...
+# (node:240942) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 修改密码验证身份、原密码和确认；持久化加盐摘要并撤销旧会话
+ok 71 - 修改密码验证身份、原密码和确认；持久化加盐摘要并撤销旧会话
+  ---
+  duration_ms: 92.258213
+  type: 'test'
+  ...
+# Subtest: 绿云地区翻译兼容已采集数据并保留线路和未识别文本
+ok 72 - 绿云地区翻译兼容已采集数据并保留线路和未识别文本
+  ---
+  duration_ms: 0.729951
+  type: 'test'
+  ...
+# (node:240956) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 公开展示匿名可读，仅输出白名单，管理接口和写操作继续需要登录
+ok 73 - 公开展示匿名可读，仅输出白名单，管理接口和写操作继续需要登录
+  ---
+  duration_ms: 331.874713
+  type: 'test'
+  ...
+# Subtest: 安装包不依赖 Git：相同、新版、旧版、异常版本与无发布
+ok 74 - 安装包不依赖 Git：相同、新版、旧版、异常版本与无发布
+  ---
+  duration_ms: 1.031277
+  type: 'test'
+  ...
+# Subtest: 完整正式发布包提供在线更新入口，缺失或外站附件不能在线安装
+ok 75 - 完整正式发布包提供在线更新入口，缺失或外站附件不能在线安装
+  ---
+  duration_ms: 0.615467
+  type: 'test'
+  ...
+# Subtest: API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作
+ok 76 - API 认证、监控 CRUD、Token 加密和 SPA 静态路由协同工作
+  ---
+  duration_ms: 326.293389
+  type: 'test'
+  ...
+# (node:241011) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: SQLite 重开持久化、500 条事件上限、迁移重复启动不覆盖已有数据
+ok 77 - SQLite 重开持久化、500 条事件上限、迁移重复启动不覆盖已有数据
+  ---
+  duration_ms: 123.132362
+  type: 'test'
+  ...
+# Subtest: Token 加解密、随机 IV、篡改密文和错误密钥拒绝
+ok 78 - Token 加解密、随机 IV、篡改密文和错误密钥拒绝
+  ---
+  duration_ms: 0.97939
+  type: 'test'
+  ...
+# Subtest: 通知租约未过期不能抢占，过期可恢复；旧持有者不能确认新任务
+ok 79 - 通知租约未过期不能抢占，过期可恢复；旧持有者不能确认新任务
+  ---
+  duration_ms: 1.962616
+  type: 'test'
+  ...
+# Subtest: 迁移旧明文 Token 后归档文件不应保留明文
+ok 80 - 迁移旧明文 Token 后归档文件不应保留明文
+  ---
+  duration_ms: 2.194852
+  type: 'test'
+  ...
+# Subtest: 缺少加密密钥时迁移拒绝且保留原文件，配置密钥后可重试
+ok 81 - 缺少加密密钥时迁移拒绝且保留原文件，配置密钥后可重试
+  ---
+  duration_ms: 2.320298
+  type: 'test'
+  ...
+# Subtest: Worker 启动前已有重启标记应正常退出
+ok 82 - Worker 启动前已有重启标记应正常退出
+  ---
+  duration_ms: 106.091285
+  type: 'test'
+  ...
+# Subtest: Worker 运行中收到重启标记应正常退出
+ok 83 - Worker 运行中收到重启标记应正常退出
+  ---
+  duration_ms: 590.14789
+  type: 'test'
+  ...
+# Subtest: 更新源只接受与设置一致的 GitHub origin
+ok 84 - 更新源只接受与设置一致的 GitHub origin
+  ---
+  duration_ms: 0.435407
+  type: 'test'
+  ...
+# Subtest: 更新检查：一致来源、脏目录拒绝、来源不一致拒绝、缺失分支
+    # Subtest: 不存在的远端分支应拒绝部署
+    ok 1 - 不存在的远端分支应拒绝部署
+      ---
+      duration_ms: 9.328941
+      type: 'test'
+      ...
+    1..1
+ok 85 - 更新检查：一致来源、脏目录拒绝、来源不一致拒绝、缺失分支
+  ---
+  duration_ms: 229.606839
+  type: 'test'
+  ...
+# (node:241113) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: API 编辑、删除、校验、事件查询和重启持久化；Worker 心跳
+    # Subtest: 错误 JSON 应返回 400
+    ok 1 - 错误 JSON 应返回 400
+      ---
+      duration_ms: 1.607841
+      type: 'test'
+      ...
+    # Subtest: TG enabled 必须是布尔值
+    ok 2 - TG enabled 必须是布尔值
+      ---
+      duration_ms: 1.970683
+      type: 'test'
+      ...
+    # Subtest: TG 密文不能由客户端直接覆盖
+    ok 3 - TG 密文不能由客户端直接覆盖
+      ---
+      duration_ms: 1.454592
+      type: 'test'
+      ...
+    1..3
+ok 86 - API 编辑、删除、校验、事件查询和重启持久化；Worker 心跳
+  ---
+  duration_ms: 1086.167928
+  type: 'test'
+  ...
+# Subtest: Telegram 429 保留队列并遵守 retry_after，成功后移除；不发送真实消息
+ok 87 - Telegram 429 保留队列并遵守 retry_after，成功后移除；不发送真实消息
+  ---
+  duration_ms: 3.55647
+  type: 'test'
+  ...
+1..87
+# tests 91
+# suites 0
+# pass 91
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9012.870714

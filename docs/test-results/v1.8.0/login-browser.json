@@ -1,0 +1,68 @@
+{
+  "results": [
+    {
+      "name": "未登录直接访问设置显示完整登录页",
+      "result": "PASS"
+    },
+    {
+      "name": "空密码阻止提交",
+      "result": "PASS"
+    },
+    {
+      "name": "错误密码显示页内提示",
+      "result": "PASS"
+    },
+    {
+      "name": "显示和隐藏密码",
+      "result": "PASS"
+    },
+    {
+      "name": "手机登录页无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "密码登录后恢复目标页",
+      "result": "PASS"
+    },
+    {
+      "name": "刷新后保持会话",
+      "result": "PASS"
+    },
+    {
+      "name": "已登录公开页显示后台",
+      "result": "PASS"
+    },
+    {
+      "name": "设置只保留版本状态，不显示仓库和分支配置",
+      "result": "PASS"
+    },
+    {
+      "name": "手机后台操作栏无横向溢出",
+      "result": "PASS"
+    },
+    {
+      "name": "错误当前密码显示页内提示",
+      "result": "PASS"
+    },
+    {
+      "name": "修改密码成功并保持当前登录",
+      "result": "PASS"
+    },
+    {
+      "name": "退出登录回到公开首页",
+      "result": "PASS"
+    },
+    {
+      "name": "重新登录可用",
+      "result": "PASS"
+    },
+    {
+      "name": "会话失效自动回到登录页",
+      "result": "PASS"
+    },
+    {
+      "name": "无浏览器弹窗和页面异常",
+      "result": "PASS"
+    }
+  ]
+}

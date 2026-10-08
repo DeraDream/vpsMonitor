@@ -29,6 +29,38 @@ try {
     db.putProvider({ id: 'release-fixture', name: 'Release fixture', adapterKey: 'not-installed' })
     const settings = db.getSettings(); settings.updates.repository = ''; db.setSettings(settings)
   } finally { db.close() }
+  // Exercise new authentication and Bot behavior using only extracted production modules.
+  const {createAuth}=await import(pathToFileURL(join(bundle,'apps/api/src/auth.mjs')).href)
+  const {createBotManagement}=await import(pathToFileURL(join(bundle,'packages/core/src/bot-management.mjs')).href)
+  const {createService}=await import(pathToFileURL(join(bundle,'packages/core/src/service.mjs')).href)
+  const featureDb=createDatabase(join(dir,'feature-data'))
+  try {
+    const auth=createAuth(featureDb,{password:'feature-password',origin:'https://release.example.com'})
+    let featureCookie='',result
+    async function authRequest(path,input={},secure=true){
+      const req={method:'POST',headers:{host:'release.example.com',cookie:featureCookie,origin:'https://release.example.com'},socket:{remoteAddress:'127.0.0.1',encrypted:secure}}
+      await auth.handle(req,{setHeader:(_,value)=>featureCookie=value.split(';')[0]},path,async()=>input,(_,status,data)=>result={status,data})
+      return result
+    }
+    await assert.rejects(authRequest('/api/auth/passkeys/login/options',{},false),{status:403})
+    await authRequest('/api/auth/login',{username:'admin',password:'feature-password'})
+    const options=await authRequest('/api/auth/passkeys/register/options',{currentPassword:'feature-password'})
+    assert.equal(options.data.options.rp.id,'release.example.com')
+    assert.equal(options.data.options.authenticatorSelection.userVerification,'required')
+    const verify={requestId:options.data.requestId,response:{}}
+    await assert.rejects(authRequest('/api/auth/passkeys/register/verify',verify),/注册验证失败/)
+    await assert.rejects(authRequest('/api/auth/passkeys/register/verify',verify),/过期或已使用/)
+    featureDb.putProvider({id:'fixture',name:'Release <fixture>',adapterKey:'not-installed'})
+    featureDb.putMonitor({id:'fixture-monitor',providerId:'fixture',enabled:false,intervalSeconds:60})
+    const settings=featureDb.getSettings();settings.telegram.personalChatId='123';featureDb.setSettings(settings)
+    const calls=[],bot=createBotManagement(featureDb,createService(featureDb),{call:async(_t,method,payload)=>{calls.push({method,payload});return {}}})
+    const callback=data=>({callback_query:{id:'callback',from:{id:123},message:{message_id:42,chat:{id:123,type:'private'}},data}})
+    await bot.handle(callback('custominterval:fixture-monitor'))
+    await bot.handle({message:{chat:{id:123,type:'private'},from:{id:123},text:'5m'}})
+    assert.equal(featureDb.getMonitor('fixture-monitor').intervalSeconds,300)
+    assert.equal(calls.at(-1).method,'editMessageText');assert.equal(calls.at(-1).payload.parse_mode,'HTML')
+    assert.ok(calls.at(-1).payload.text.includes('&lt;fixture&gt;'))
+  } finally {featureDb.close()}
   execFileSync(process.execPath, ['--input-type=module', '-e', "import {getAdapter} from '@vps-monitor/adapters';if(!getAdapter('bero-host')||!getAdapter('greencloud'))process.exit(1)"], { cwd: bundle })
   const port = 55000 + Math.floor(Math.random() * 1000)
   const env = { ...process.env, DISABLE_BUILTIN_PROVIDERS: '1', DATA_DIR: join(dir, 'test-data'), HOST: '127.0.0.1', PORT: String(port), ADMIN_PASSWORD: 'release-test-password', TOKEN_ENCRYPTION_KEY: 'release-test-key', WORKER_TICK_MS: '500' }
@@ -75,7 +107,7 @@ try {
   const release = JSON.parse(await readFile(join(bundle, 'release-manifest.json'), 'utf8'))
   assert.equal(release.version, version); assert.equal(release.builtLocally, true)
   const result = { version, filename, sha256: digest, verified: true,
-    checks: ['SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '密码修改、旧会话失效及 API 重启后新密码有效', '解压后 Worker 心跳'] }
+    checks: ['Passkey 生产依赖、HTTPS 限制、RP ID、用户验证及一次性挑战', 'Bot 生产模块、自定义间隔及 HTML 原地更新', 'SHA256', '匿名公开库存及后台登录入口', '排除凭据和业务数据', '排除前端开发依赖', '生产 Adapter 可加载', '解压后 API 启动及会话认证（无弹窗）', '无 Git 安装包版本检查', 'API 与前端版本一致', '监控创建及错误反馈', 'Token 加密设置', '密码修改、旧会话失效及 API 重启后新密码有效', '解压后 Worker 心跳'] }
   await writeFile(join(root, 'releases/verification.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify(result, null, 2))
 } finally { for (const child of children.reverse()) await stop(child); await rm(dir, { recursive: true, force: true }) }

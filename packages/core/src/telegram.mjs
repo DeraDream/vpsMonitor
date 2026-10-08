@@ -13,9 +13,9 @@ export function formatCard(plan, telegramSettings, status = "restocked") {
     plan.tags?.length ? plan.tags.map(tag => `#${escapeHtml(tag)}`).join(" ") : ""];
   return lines.filter(Boolean).join("\n");
 }
-export async function telegramCall(settings, method, payload, {now=Date.now()}={}) {
+export async function telegramCall(settings, method, payload, {now=Date.now(),management=false}={}) {
   const quiet=quietHoursStatus(settings,now);
-  if(quiet.active){const error=new Error(`当前为北京时间免打扰时段（${settings.quietHours.start}–${settings.quietHours.end}），Telegram 暂停发送和编辑`);error.quietHours=true;error.resumeAt=quiet.resumeAt;throw error;}
+  if(quiet.active&&!management){const error=new Error(`当前为北京时间免打扰时段（${settings.quietHours.start}–${settings.quietHours.end}），Telegram 暂停发送和编辑`);error.quietHours=true;error.resumeAt=quiet.resumeAt;throw error;}
   if (!settings.botTokenEncrypted) throw new Error("请先保存 Telegram Bot Token");
   const token = decryptToken(settings.botTokenEncrypted);
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)});
