@@ -12,16 +12,33 @@ GROUPS = [
 ]
 
 def page_locations(page, fallback_name, fallback_url):
-    links = page.locator("a.cart-category[href]").evaluate_all("items => items.map(item => ({name: item.innerText.trim(), url: item.href}))")
-    return links or [{"id": fallback_name.lower().replace(" ", "-"), "name": fallback_name, "url": fallback_url}]
+    locator = page.locator("a.cart-category[href]")
+    last_error = None
+    for attempt in range(3):
+        try:
+            locator.first.wait_for(state="attached", timeout=20000)
+            links = locator.evaluate_all("items => items.map(item => ({name: item.innerText.trim(), url: item.href}))")
+            if links:
+                return links
+        except Exception as error:
+            last_error = error
+        if attempt < 2:
+            # Cloudflare can report verification success before redirecting to
+            # the catalog. Reloading after that transition usually completes it.
+            page.wait_for_timeout(2000)
+            page.goto(fallback_url, wait_until="domcontentloaded", timeout=45000)
+    if "Just a moment" in page.title():
+        raise RuntimeError(f"Cloudflare 验证后仍未加载地区：{last_error}")
+    return [{"id": fallback_name.lower().replace(" ", "-"), "name": fallback_name, "url": fallback_url}]
 
 def load_catalog(page, url):
     last_error = None
     for _ in range(3):
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            page.locator(".cart-product").first.wait_for(timeout=20000)
-            if "Just a moment" not in page.title() and page.locator(".cart-product").count(): return page.content()
+            cards = page.locator(".cart-product[data-value]")
+            cards.first.wait_for(state="attached", timeout=25000)
+            if "Just a moment" not in page.title() and cards.count(): return page.content()
         except Exception as error:
             last_error = error
         page.wait_for_timeout(1500)
@@ -35,11 +52,17 @@ def main():
         for category_id, category_name, url in GROUPS:
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(500)
                 locations = page_locations(page, category_name, url)
+                category_pages, location_errors = [], []
                 for location in locations:
-                    html = load_catalog(page, location["url"])
-                    result["pages"].append({"categoryId": category_id, "location": location["name"], "url": location["url"], "html": html})
+                    try:
+                        html = load_catalog(page, location["url"])
+                        category_pages.append({"categoryId": category_id, "location": location["name"], "url": location["url"], "html": html})
+                    except Exception as error:
+                        location_errors.append(f'{location["name"]}: {error}')
+                if location_errors:
+                    raise RuntimeError("；".join(location_errors))
+                result["pages"].extend(category_pages)
             except Exception as error:
                 result["failures"].append({"categoryId": category_id, "categoryName": category_name, "error": str(error)[:300]})
     print(json.dumps(result, ensure_ascii=False))

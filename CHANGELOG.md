@@ -1,5 +1,10 @@
 # 更新日志
 
+## 1.9.3
+
+- V.PS 按地区分别重试并继续采集其他地区；等待已挂载的套餐卡片，避免动态加载时误报产品线失败。
+- 将 VMISS Cloudflare 人机验证所需的 OpenCV 加入浏览器依赖清单。
+
 ## 1.9.1
 
 - 新增 V.PS 与 VMISS 独立浏览器采集 Adapter，分别处理 Cloudflare 页面，并将 V.PS 分类调整为 Performance、Edge、Cloud、Storage KVM VPS。
