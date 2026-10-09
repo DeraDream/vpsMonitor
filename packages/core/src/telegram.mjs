@@ -17,7 +17,7 @@ function configurationLines(plan) {
 
 export function formatCard(plan, telegramSettings, status = "restocked") {
   const merchant = plan.providerName || plan.providerId || "商家";
-  const identity = `🏪 <b>${escapeHtml(merchant)}</b> - <b>${escapeHtml(plan.name)}</b>`;
+  const identity = `🏪 <b>${escapeHtml(merchant)} - ${escapeHtml(plan.name)}</b>`;
   const hasBuyLink = /^https?:\/\//i.test(plan.buyUrl || "");
   const linkedIdentity = hasBuyLink ? `<a href="${escapeAttr(plan.buyUrl)}">${identity}</a>` : identity;
   const overview = [
@@ -33,7 +33,7 @@ export function formatCard(plan, telegramSettings, status = "restocked") {
     Number.isInteger(plan.quantity) ? `📦 库存：${plan.quantity} 台` : ""
   ].filter(Boolean).join("\n");
   const purchase = telegramSettings.showBuyLink && /^https?:\/\//i.test(plan.buyUrl || "")
-    ? `🛒 购买链接：<a href=\"${escapeAttr(plan.buyUrl)}\">${escapeHtml(plan.buyUrl)}</a>` : "";
+    ? `${status === "sold_out" ? "<s>" : ""}🛒 购买链接：<a href=\"${escapeAttr(plan.buyUrl)}\">${escapeHtml(plan.buyUrl)}</a>${status === "sold_out" ? "</s>" : ""}` : "";
   const tags = plan.tags?.length ? plan.tags.map(tag => `#${escapeHtml(tag)}`).join(" ") : "";
   return [
     titleFor(plan, status),
