@@ -25,7 +25,7 @@ test('首次基线不刷上架；新分类与范围外新套餐自动解析、�
  store.putMonitor({...store.getMonitor('m'),scope:'selected',planIds:['test:existing']});
  await probe({categories:[{id:'regular',name:'Regular'},{id:'black-friday',name:'Black Friday'}],completedCategories:['regular','black-friday'],plans:[plan('existing'),plan('black-friday',{categoryId:'black-friday'}),plan('sold-new',{available:false,quantity:0})]});
  assert.equal(store.listEvents().filter(e=>e.type==='new_plan').length,2);assert.equal(store.listNotifications().length,2);
- await service.deliverNotifications();assert.equal(calls.length,2);assert.ok(calls.every(c=>c.method==='sendMessage'&&c.text.includes('新套餐上架')&&c.text.includes('2 cores / 4GB')));assert.match(calls[1].text,/库存：0 台/);
+ await service.deliverNotifications();assert.equal(calls.length,2);assert.ok(calls.every(c=>c.method==='sendMessage'&&c.text.includes('新套餐上架')&&c.text.includes('CPU：2 cores')&&c.text.includes('内存：4GB')));assert.match(calls[1].text,/库存：0 台/);
  await probe({});await service.deliverNotifications();assert.equal(calls.length,2);assert.equal(store.listEvents().length,4);
 }));
 test('关闭新套餐开关仍记录动态，开启不补发已有套餐，关闭后取消排队的新套餐',()=>fixture(async({store,service,calls,plan,probe})=>{

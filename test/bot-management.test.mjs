@@ -24,10 +24,10 @@ test('Bot 自定义间隔：严格范围、单位、重试、取消、过期和�
   const cb=data=>({callback_query:{id:'cb',from:{id:123},message:{message_id:42,chat:{id:123,type:'private'}},data}});
   const msg=(text,id=123)=>({message:{chat:{id,type:'private'},from:{id},text}});
   await bot.handle(cb('custominterval:m'));assert.equal(calls.at(-1).method,'editMessageText');
-  for(const input of ['29','3601','1.5m','garbage','5h']){await bot.handle(msg(input));assert.equal(store.getMonitor('m').intervalSeconds,60);assert.match(calls.at(-1).payload.text,/重新输入/)}
+  for(const input of ['19','3601','1.5m','garbage','5h']){await bot.handle(msg(input));assert.equal(store.getMonitor('m').intervalSeconds,60);assert.match(calls.at(-1).payload.text,/重新输入/)}
   await bot.handle(msg('75',456));assert.equal(store.getMonitor('m').intervalSeconds,60);
   await bot.handle(msg('75'));assert.equal(store.getMonitor('m').intervalSeconds,75);assert.equal(calls.at(-1).payload.message_id,42);
-  for(const [input,seconds] of [['5m',300],['7分钟',420],['95秒',95],['30',30],['3600',3600]]){await bot.handle(cb('custominterval:m'));await bot.handle(msg(input));assert.equal(store.getMonitor('m').intervalSeconds,seconds)}
+  for(const [input,seconds] of [['5m',300],['7分钟',420],['95秒',95],['20',20],['30',30],['3600',3600]]){await bot.handle(cb('custominterval:m'));await bot.handle(msg(input));assert.equal(store.getMonitor('m').intervalSeconds,seconds)}
   await bot.handle(cb('custominterval:m'));await bot.handle(msg('/cancel'));await bot.handle(msg('90'));assert.equal(store.getMonitor('m').intervalSeconds,3600);
   await bot.handle(cb('custominterval:m'));time+=300001;await bot.handle(msg('100'));assert.equal(store.getMonitor('m').intervalSeconds,3600);assert.match(calls.at(-1).payload.text,/过期/);
   await bot.handle(cb('custominterval:m'));await bot.handle(cb('menu'));await bot.handle(msg('90'));assert.equal(store.getMonitor('m').intervalSeconds,3600);

@@ -11,8 +11,16 @@ function titleFor(plan, status) {
 
 function configurationLines(plan) {
   const rows = Array.isArray(plan.configuration) ? plan.configuration : [];
-  if (rows.length) return rows.map(row => `• ${escapeHtml(row.label)}：${escapeHtml(row.value)}`);
-  return plan.specs ? [`• ${escapeHtml(plan.specs)}`] : [];
+  const configured = labels => rows.find(row => labels.includes(row.label.trim().toLowerCase()))?.value || "";
+  return [
+    ["CPU", plan.cpu || configured(["cpu"])],
+    ["内存", plan.ram || configured(["ram", "memory"])],
+    ["硬盘", plan.storage || plan.nvme || configured(["storage", "disk", "hard drive", "hard drives", "nvme", "ssd"])],
+    ["流量", plan.bandwidth || configured(["bandwidth", "traffic", "data transfer"])],
+    ["接口速率", plan.portSpeed || configured(["port", "port speed"])],
+    ["IPv4", plan.ipv4 || configured(["ipv4"])],
+    ["IPv6", plan.ipv6 || configured(["ipv6"])]
+  ].filter(([, value]) => value).map(([label, value]) => `${label}：${escapeHtml(value)}`);
 }
 
 export function formatCard(plan, telegramSettings, status = "restocked") {
