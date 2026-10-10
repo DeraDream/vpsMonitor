@@ -54,7 +54,8 @@ export function formatCard(plan, telegramSettings, status = "restocked") {
 }
 export async function telegramCall(settings, method, payload, {now=Date.now(),management=false}={}) {
   const quiet=quietHoursStatus(settings,now);
-  if(quiet.active&&!management){const error=new Error(`当前为北京时间免打扰时段（${settings.quietHours.start}–${settings.quietHours.end}），Telegram 暂停发送和编辑`);error.quietHours=true;error.resumeAt=quiet.resumeAt;throw error;}
+  // Telegram only supports silent delivery for new messages. Message edits do not ring.
+  if(quiet.active&&!management&&method==='sendMessage')payload={...payload,disable_notification:true};
   if (!settings.botTokenEncrypted) throw new Error("请先保存 Telegram Bot Token");
   const token = decryptToken(settings.botTokenEncrypted);
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)});

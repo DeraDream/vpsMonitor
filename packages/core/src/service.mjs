@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { getAdapter } from "@vps-monitor/adapters";
 import { normalizePlan, reconcilePlan, nextRetry, monitored } from "./monitor-engine.mjs";
 import { formatCard, telegramCall, telegramTargets } from "./telegram.mjs";
-import { quietHoursStatus } from "./notification-policy.mjs";
 
 export function createService(store, {now: notificationNow=Date.now}={}) {
   const snapshot=plan=>Object.fromEntries(["name","price","billingCycle","specs","location","quantity","available","buyUrl","categoryName","cpu","ram","storage","bandwidth","portSpeed"].filter(key=>plan[key]!==undefined).map(key=>[key,plan[key]]));
@@ -36,7 +35,6 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
   async function deliverNotifications(){
     for(const listed of store.listNotifications()){
       const now=notificationNow();if(Date.parse(listed.nextAttemptAt)>now)continue;
-      if(quietHoursStatus(store.getSettings().telegram,now).active)continue;
       const owner=randomUUID();if(!store.claimNotification(listed.id,owner,now))continue;
       try{
         const job=store.getNotification(listed.id);

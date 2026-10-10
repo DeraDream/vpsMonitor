@@ -42,11 +42,11 @@ test('TG 未配置和无旧卡片也记录售罄；重复探测不产生成功�
  await probe({plans:[],completedCategories:[],failures:[{categoryId:'regular',categoryName:'Regular',error:'HTTP 503'}]});assert.equal(store.getPlan('test:old').listed,true);assert.equal(store.listEvents().filter(e=>e.type==='delisted').length,0);
  await probe({plans:[],completedCategories:['regular'],failures:[]});assert.equal(store.listEvents().filter(e=>e.type==='delisted').length,1);
 }));
-test('免打扰与暂停监控保留新套餐任务，恢复后发新上架快照，库存模式切换不丢任务',()=>fixture(async({store,service,calls,plan,probe})=>{
+test('免打扰期间新套餐立即静默推送，暂停监控不会重复发送',()=>fixture(async({store,service,calls,plan,probe})=>{
  await probe({plans:[plan('old')]});const settings=store.getSettings();settings.telegram.notificationMode='all';settings.telegram.quietHours={enabled:true,start:'23:00',end:'08:00'};store.setSettings(settings);
- await probe({plans:[plan('old'),plan('holiday')]});let time=Date.parse('2099-01-01T15:30:00Z');const paused=createService(store,{now:()=>time});await paused.deliverNotifications();assert.equal(calls.length,0);
- settings.telegram.notificationMode='restock';store.setSettings(settings);time=Date.parse('2099-01-02T00:00:00Z');store.putMonitor({...store.getMonitor('m'),enabled:false});await paused.deliverNotifications();assert.equal(calls.length,0);assert.equal(store.listNotifications().length,1);
- store.putMonitor({...store.getMonitor('m'),enabled:true});await paused.deliverNotifications();assert.equal(calls.length,1);assert.match(calls[0].text,/新套餐上架/);assert.equal(store.listNotifications().length,0);
+ await probe({plans:[plan('old'),plan('holiday')]});let time=Date.parse('2099-01-01T15:30:00Z');const paused=createService(store,{now:()=>time});await paused.deliverNotifications();assert.equal(calls.length,1);assert.equal(calls[0].disable_notification,true);assert.match(calls[0].text,/新套餐上架/);
+ settings.telegram.notificationMode='restock';store.setSettings(settings);time=Date.parse('2099-01-02T00:00:00Z');store.putMonitor({...store.getMonitor('m'),enabled:false});await paused.deliverNotifications();assert.equal(calls.length,1);assert.equal(store.listNotifications().length,0);
+ store.putMonitor({...store.getMonitor('m'),enabled:true});await paused.deliverNotifications();assert.equal(calls.length,1);
 }));
 test('首次部分分类失败，恢复分类先建基线，不误报该分类所有旧套餐为新品',()=>fixture(async({store,service,calls,plan,probe})=>{
  const categories=[{id:'regular',name:'Regular'},{id:'holiday',name:'Holiday'}];store.putProvider({...store.getProvider('test'),categories});

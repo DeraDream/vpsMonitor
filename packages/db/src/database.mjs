@@ -62,16 +62,16 @@ function migrateLegacyStore(db, dir) {
 
 class Store {
   constructor(db){this.db=db;}
-  listProviders(){return this.db.prepare("SELECT payload FROM providers ORDER BY rowid").all().map(r=>JSON.parse(r.payload));}
+  listProviders(){return this.db.prepare("SELECT payload FROM providers ORDER BY COALESCE(json_extract(payload, '$.createdAt'), ''), rowid").all().map(r=>JSON.parse(r.payload));}
   getProvider(id){const r=this.db.prepare("SELECT payload FROM providers WHERE id=?").get(id);return r?JSON.parse(r.payload):null;}
-  putProvider(v){this.db.prepare("INSERT OR REPLACE INTO providers(id,payload) VALUES (?,?)").run(v.id,JSON.stringify(v));}
+  putProvider(v){this.db.prepare("INSERT INTO providers(id,payload) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload").run(v.id,JSON.stringify(v));}
   listPlans(providerId=null){const rows=providerId?this.db.prepare("SELECT payload FROM plans WHERE provider_id=? ORDER BY rowid").all(providerId):this.db.prepare("SELECT payload FROM plans ORDER BY rowid").all();return rows.map(r=>JSON.parse(r.payload));}
   getPlan(id){const r=this.db.prepare("SELECT payload FROM plans WHERE id=?").get(id);return r?JSON.parse(r.payload):null;}
   putPlan(v){this.db.prepare("INSERT OR REPLACE INTO plans(id,provider_id,payload) VALUES (?,?,?)").run(v.id,v.providerId,JSON.stringify(v));}
-  listMonitors(){return this.db.prepare("SELECT payload FROM monitors ORDER BY rowid").all().map(r=>JSON.parse(r.payload));}
+  listMonitors(){return this.db.prepare("SELECT payload FROM monitors ORDER BY COALESCE(json_extract(payload, '$.createdAt'), ''), rowid").all().map(r=>JSON.parse(r.payload));}
   getMonitor(id){const r=this.db.prepare("SELECT payload FROM monitors WHERE id=?").get(id);return r?JSON.parse(r.payload):null;}
   getMonitorByProvider(providerId){const r=this.db.prepare("SELECT payload FROM monitors WHERE provider_id=?").get(providerId);return r?JSON.parse(r.payload):null;}
-  putMonitor(v){this.db.prepare("INSERT OR REPLACE INTO monitors(id,provider_id,payload) VALUES (?,?,?)").run(v.id,v.providerId,JSON.stringify(v));}
+  putMonitor(v){this.db.prepare("INSERT INTO monitors(id,provider_id,payload) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET provider_id=excluded.provider_id,payload=excluded.payload").run(v.id,v.providerId,JSON.stringify(v));}
   transaction(fn){this.db.exec("BEGIN IMMEDIATE");try{const result=fn();this.db.exec("COMMIT");return result;}catch(error){this.db.exec("ROLLBACK");throw error;}}
   deleteMonitor(id){this.transaction(()=>{const monitor=this.getMonitor(id);if(monitor)for(const job of this.listNotifications()){const plan=this.getPlan(job.planId);if(job.monitorId===id||(!job.monitorId&&plan?.providerId===monitor.providerId))this.deleteNotification(job.id);}this.db.prepare("DELETE FROM monitors WHERE id=?").run(id);});}
   listNotifications(){return this.db.prepare("SELECT payload FROM notifications ORDER BY next_attempt_at,rowid").all().map(r=>JSON.parse(r.payload));}

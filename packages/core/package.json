@@ -1,6 +1,6 @@
 {
   "name": "@vps-monitor/core",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "type": "module",
   "exports": "./src/index.mjs"
 }
