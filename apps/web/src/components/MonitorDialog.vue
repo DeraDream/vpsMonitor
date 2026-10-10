@@ -14,16 +14,17 @@ const groups = computed(() => groupPlans(props.dialog.plans, props.dialog.provid
 const displayedGroups=computed(()=>props.dialog.type==='monitor'&&form.scope==='categories'?groups.value.filter(group=>form.categoryIds.includes(group.id)):groups.value)
 const activeId = ref(props.dialog.categoryId || groups.value[0]?.id)
 const isDmit=computed(()=>props.dialog.provider?.adapterKey==='dmit')
+const dmitLocationKey=plan=>String(plan.externalId||plan.name||'').split('.')[0]||plan.location||'other'
 const isThreeLevelPlans=computed(()=>props.dialog.type==='plans'&&['dmit','vps-hosting'].includes(props.dialog.provider?.adapterKey))
 const topLevelId=ref('')
 const threeLevelOuterGroups=computed(()=>{
  if(!isThreeLevelPlans.value)return []
- if(isDmit.value){const byLocation=new Map();for(const plan of props.dialog.plans){const id=plan.location||'other';if(!byLocation.has(id))byLocation.set(id,{id,name:id==='other'?'未标注地区':id,plans:[]});byLocation.get(id).plans.push(plan)}return [...byLocation.values()]}
+ if(isDmit.value){const byLocation=new Map();for(const plan of props.dialog.plans){const id=dmitLocationKey(plan);if(!byLocation.has(id))byLocation.set(id,{id,name:id==='other'?'未标注地区':id,plans:[]});byLocation.get(id).plans.push(plan)}return [...byLocation.values()]}
  return groups.value
 })
 const threeLevelInnerGroups=computed(()=>{
  if(!isThreeLevelPlans.value)return []
- if(isDmit.value)return groups.value.map(group=>({...group,plans:group.plans.filter(plan=>(plan.location||'other')===topLevelId.value)})).filter(group=>group.plans.length)
+ if(isDmit.value)return groups.value.map(group=>({...group,plans:group.plans.filter(plan=>dmitLocationKey(plan)===topLevelId.value)})).filter(group=>group.plans.length)
  const outer=groups.value.find(group=>group.id===topLevelId.value)
  if(!outer)return []
  const byLocation=new Map();for(const plan of outer.plans){const id=plan.location||'other';if(!byLocation.has(id))byLocation.set(id,{id,name:id==='other'?'未标注地区':id,plans:[]});byLocation.get(id).plans.push(plan)}return [...byLocation.values()]
@@ -36,7 +37,7 @@ const hardwareFilter=ref('')
 const locations=computed(()=>[...new Set((active.value?.plans||[]).map(plan=>plan.location).filter(Boolean))].sort())
 const hardwares=computed(()=>[...new Set((active.value?.plans||[]).filter(plan=>!locationFilter.value||plan.location===locationFilter.value).map(plan=>plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()).filter(Boolean))])
 const dmitGroups=computed(()=>displayedGroups.value.filter(group=>!locationFilter.value||group.plans.some(plan=>plan.location===locationFilter.value)))
-const dmitRouteLabel=group=>({premium:'Pro（三网优化）',eyeball:'EB（家宽优化）','tier-1':'T1（国际路线）'})[group?.id]||group?.name
+const dmitRouteLabel=group=>({premium:'Pro',eyeball:'EB','tier-1':'T1'})[group?.id]||group?.name
 const filteredPlans=computed(()=>(active.value?.plans||[]).filter(plan=>{
  const hardware=plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()
  return (!locationFilter.value||plan.location===locationFilter.value)&&(!hardwareFilter.value||hardware===hardwareFilter.value)&&(!search.value||[plan.name,plan.specs,plan.location,...(plan.configuration||[]).map(row=>row.value)].join(' ').toLowerCase().includes(search.value.toLowerCase()))
