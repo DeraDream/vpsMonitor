@@ -92,13 +92,14 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <p v-if="dialog.loading" class="hint" role="status">正在加载商家套餐…</p>
       <p v-if="dialog.error" class="category-warning" role="alert">套餐加载失败：{{dialog.error}}，请关闭后重试。</p>
       <template v-if="form.providerId && !dialog.loading && !dialog.error">
-      <h3>2. 选择套餐</h3>
+      <h3>{{ dialog.monitor ? '1. 选择套餐' : '2. 选择套餐' }}</h3>
       <label class="check"><input type="checkbox" v-model="form.enabled"> 启用监控</label>
+      <div class="field"><label for="monitor-interval">轮询间隔（秒）</label><input id="monitor-interval" ref="intervalInput" type="number" max="3600" step="1" required :disabled="saving" v-model.number="form.intervalSeconds"><small class="hint">输入正整数秒数，点击“保存任务”后生效。</small></div>
       <label class="scope-option"><input type="radio" value="all" v-model="form.scope"><span><b>监控全部套餐</b><br>包含所有系列，商家新增的套餐也自动纳入。</span></label>
       <label v-if="groups.length" class="scope-option"><input type="radio" value="categories" v-model="form.scope"><span><b>只监控指定分类</b><br>所选分类的新增套餐也自动纳入。</span></label>
       <div v-if="form.scope==='categories'" class="category-checks"><label v-for="group in groups" :key="group.id" class="check"><input type="checkbox" :value="group.id" v-model="form.categoryIds">{{isDmit?dmitRouteLabel(group):group.name}}</label></div>
       <label class="scope-option"><input type="radio" value="selected" v-model="form.scope"><span><b>只监控指定套餐</b><br>在不同系列中分别勾选，切换系列保留选择。</span></label>
-      <h3>{{ form.scope==='selected' ? '3. 选择具体套餐' : '3. 套餐列表' }}</h3>
+      <h3>{{ dialog.monitor ? (form.scope==='selected' ? '2. 选择具体套餐' : '2. 套餐列表') : (form.scope==='selected' ? '3. 选择具体套餐' : '3. 套餐列表') }}</h3>
       <p v-if="form.scope === 'categories' && !displayedGroups.length" class="hint">请先在上方选择至少一个套餐分类。</p>
       <div v-if="isDmit" class="plan-filters dmit-cascades">
         <div class="field"><label for="dmit-monitor-location">1. 地区</label><select id="dmit-monitor-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div>
@@ -126,7 +127,7 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <div v-if="pageCount>1" class="plan-pagination"><button class="button ghost" :disabled="page<=1" @click="page--">上一页</button><span class="hint">第 {{Math.min(page,pageCount)}} / {{pageCount}} 页 · {{filteredPlans.length}} 个套餐</span><button class="button ghost" :disabled="page>=pageCount" @click="page++">下一页</button></div>
       </section>
       <p class="hint" v-if="form.scope === 'selected'">共选择 {{ form.planIds.length }} 个套餐</p>
-      <div class="field"><label for="monitor-interval">轮询间隔（秒）</label><input id="monitor-interval" ref="intervalInput" type="number" max="3600" step="1" required :disabled="saving" v-model.number="form.intervalSeconds"><small class="hint">输入正整数秒数，点击“保存任务”后生效。</small></div><p v-if="formError" class="category-warning" role="alert">{{formError}}</p>
+      <p v-if="formError" class="category-warning" role="alert">{{formError}}</p>
       </template>
       <div class="controls modal-actions"><button class="button" :disabled="!form.providerId||dialog.loading||!!dialog.error||saving" @click="submit">{{saving?'保存中…':'保存任务'}}</button><button class="button ghost" @click="$emit('close')">取消</button></div>
     </template>
