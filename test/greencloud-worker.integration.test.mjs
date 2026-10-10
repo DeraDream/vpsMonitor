@@ -35,3 +35,17 @@ test('未创建监控的商家由 Worker 后台刷新目录，不创建动态或
   const provider=store.getProvider('greencloud');assert.ok(provider.catalogLastAttemptAt);assert.ok(provider.catalogLastRefreshAt);assert.equal(provider.catalogLastError,null)
  }finally{if(child.exitCode===null){child.kill('SIGTERM');await once(child,'exit')}store.close();await rm(dir,{recursive:true,force:true})}
 })
+
+test('监控任务独立运行，慢任务不会阻塞新任务的首次探测',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'vps-parallel-worker-')),store=createDatabase(dir)
+ store.putProvider({id:'slow',name:'Slow',adapterKey:'slow-fixture',categories:[],notifyOnFirstDiscovery:false});store.putProvider({id:'fast',name:'Fast',adapterKey:'fast-fixture',categories:[],notifyOnFirstDiscovery:false})
+ store.putMonitor({id:'slow-monitor',providerId:'slow',enabled:true,scope:'all',planIds:[],intervalSeconds:300});store.putMonitor({id:'fast-monitor',providerId:'fast',enabled:true,scope:'all',planIds:[],intervalSeconds:300})
+ const preload=join(dir,'adapters.mjs'),adapterModule=new URL('../packages/adapters/src/index.mjs',import.meta.url).href
+ await writeFile(preload,`import {registerAdapter} from ${JSON.stringify(adapterModule)};const plan=(externalId)=>({externalId,name:externalId,available:true,quantity:1});registerAdapter({key:'slow-fixture',discover:async()=>{await new Promise(resolve=>setTimeout(resolve,2500));return {plans:[plan('slow')],completedCategories:[],failures:[]}}});registerAdapter({key:'fast-fixture',discover:async()=>({plans:[plan('fast')],completedCategories:[],failures:[]})});`)
+ const child=spawn(process.execPath,['--import',preload,'apps/worker/src/worker.mjs'],{env:{...process.env,DISABLE_BUILTIN_PROVIDERS:'1',DATA_DIR:dir,WORKER_TICK_MS:'500'},stdio:['ignore','ignore','pipe']});let errors='';child.stderr.on('data',chunk=>errors+=chunk)
+ try{
+  for(let i=0;i<40&&!store.getMonitor('fast-monitor').lastRunAt;i++)await new Promise(r=>setTimeout(r,25))
+  assert.ok(store.getMonitor('fast-monitor').lastRunAt,errors)
+  assert.equal(store.getMonitor('slow-monitor').lastRunAt,undefined)
+ }finally{if(child.exitCode===null){child.kill('SIGTERM');await once(child,'exit')}store.close();await rm(dir,{recursive:true,force:true})}
+})
