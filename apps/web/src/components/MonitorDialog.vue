@@ -13,15 +13,24 @@ const form = reactive({ providerId: props.dialog.providerId, enabled: props.dial
 const groups = computed(() => groupPlans(props.dialog.plans, props.dialog.provider?.categories))
 const activeId = ref(props.dialog.categoryId || groups.value[0]?.id)
 const active = computed(() => groups.value.find(group => group.id === activeId.value) || groups.value[0])
+const isDmit=computed(()=>props.dialog.provider?.adapterKey==='dmit')
 const categoryStatus = computed(() => props.monitors.find(monitor => monitor.providerId === props.dialog.providerId)?.categoryStatuses?.[active.value?.id])
 watch(() => props.dialog.providerId, value => { form.providerId = value; form.planIds = []; activeId.value = groups.value[0]?.id })
 const search=ref(''),locationFilter=ref(''),page=ref(1),pageSize=20
+const hardwareFilter=ref('')
 const locations=computed(()=>[...new Set((active.value?.plans||[]).map(plan=>plan.location).filter(Boolean))].sort())
-const filteredPlans=computed(()=>(active.value?.plans||[]).filter(plan=>(!locationFilter.value||plan.location===locationFilter.value)&&(!search.value||[plan.name,plan.specs,plan.location,...(plan.configuration||[]).map(row=>row.value)].join(' ').toLowerCase().includes(search.value.toLowerCase()))))
+const hardwares=computed(()=>[...new Set((active.value?.plans||[]).filter(plan=>!locationFilter.value||plan.location===locationFilter.value).map(plan=>plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()).filter(Boolean))])
+const dmitGroups=computed(()=>groups.value.filter(group=>!locationFilter.value||group.plans.some(plan=>plan.location===locationFilter.value)))
+const dmitRouteLabel=group=>({premium:'Premium（三网优化）',eyeball:'Eyeball（家宽优化）','tier-1':'Tier 1（国际路线）'})[group?.id]||group?.name
+const filteredPlans=computed(()=>(active.value?.plans||[]).filter(plan=>{
+ const hardware=plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()
+ return (!locationFilter.value||plan.location===locationFilter.value)&&(!hardwareFilter.value||hardware===hardwareFilter.value)&&(!search.value||[plan.name,plan.specs,plan.location,...(plan.configuration||[]).map(row=>row.value)].join(' ').toLowerCase().includes(search.value.toLowerCase()))
+}))
 const pageCount=computed(()=>Math.max(1,Math.ceil(filteredPlans.value.length/pageSize)))
 const visiblePlans=computed(()=>filteredPlans.value.slice((Math.min(page.value,pageCount.value)-1)*pageSize,Math.min(page.value,pageCount.value)*pageSize))
-watch(activeId,()=>{locationFilter.value='';search.value='';page.value=1})
-watch([search,locationFilter],()=>page.value=1)
+watch(activeId,()=>{locationFilter.value='';hardwareFilter.value='';search.value='';page.value=1})
+watch(locationFilter,()=>{if(isDmit.value){hardwareFilter.value='';if(!dmitGroups.value.some(group=>group.id===activeId.value))activeId.value=dmitGroups.value[0]?.id}})
+watch([search,locationFilter,hardwareFilter],()=>page.value=1)
 function statusLabel(plan){return !plan.available?'缺货':plan.availabilitySource==='order-button'?'可订购 · 数量未公开':'有货'}
 const intervalInput=ref(null),formError=ref('')
 function submit() { if(!form.providerId||props.dialog.loading||props.dialog.error||props.saving)return;formError.value='';if(!intervalInput.value?.checkValidity()||!Number.isInteger(form.intervalSeconds)||form.intervalSeconds<=0){formError.value='轮询间隔请输入正整数秒数（最多 3600 秒）';intervalInput.value?.reportValidity();return;} emit('save', { ...form, planIds: [...form.planIds], categoryIds:[...form.categoryIds] }) }
@@ -41,11 +50,16 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <p v-if="dialog.loading" class="hint" role="status">正在加载套餐…</p>
       <p v-if="dialog.error" class="category-warning" role="alert">{{dialog.error}}</p>
       <template v-if="!dialog.loading && !dialog.error">
-      <PlanCategoryTabs :groups="groups" :active="active?.id" @change="activeId = $event" />
+      <div v-if="isDmit" class="plan-filters dmit-cascades">
+        <div class="field"><label for="dmit-plan-location">1. 地区</label><select id="dmit-plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div>
+        <div class="field"><label for="dmit-plan-route">2. 线路</label><select id="dmit-plan-route" :value="active?.id" @change="activeId=$event.target.value"><option v-for="group in dmitGroups" :key="group.id" :value="group.id">{{dmitRouteLabel(group)}}</option></select></div>
+        <div class="field"><label for="dmit-plan-hardware">3. 硬件平台</label><select id="dmit-plan-hardware" v-model="hardwareFilter"><option value="">全部平台</option><option v-for="hardware in hardwares" :key="hardware" :value="hardware">{{hardware}}</option></select></div>
+      </div>
+      <PlanCategoryTabs v-else :groups="groups" :active="active?.id" @change="activeId = $event" />
       <section v-if="active" :id="`plans-${active.id}`" role="tabpanel" :aria-label="active.name">
-        <h3>{{ active.name }}</h3>
+        <h3>{{ isDmit ? dmitRouteLabel(active) : active.name }}</h3>
         <p v-if="active.retired" class="category-warning">该分类已移出商家当前目录，以下为历史记录。</p>
-        <div v-if="dialog.provider?.dynamicCategories || active.plans.length>20" class="plan-filters"><div class="field"><label for="plan-search">搜索套餐</label><input id="plan-search" v-model="search" placeholder="搜索套餐名称、配置"></div><div v-if="locations.length" class="field"><label for="plan-location">地区</label><select id="plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div></div>
+        <div v-if="!isDmit && (dialog.provider?.dynamicCategories || active.plans.length>20)" class="plan-filters"><div class="field"><label for="plan-search">搜索套餐</label><input id="plan-search" v-model="search" placeholder="搜索套餐名称、配置"></div><div v-if="locations.length" class="field"><label for="plan-location">地区</label><select id="plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div></div>
         <p class="hint">{{ active.plans.length }} 个套餐 · {{ active.plans.filter(plan => plan.available && plan.availabilitySource!=='order-button').length }} 个有货<span v-if="active.plans.some(plan=>plan.availabilitySource==='order-button'&&plan.available)"> · {{active.plans.filter(plan=>plan.availabilitySource==='order-button'&&plan.available).length}} 个可订购，库存未公开</span></p>
         <p v-if="categoryStatus?.lastError" class="category-warning">本系列探测失败，以下保留上次状态：{{ categoryStatus.lastError }}</p>
         <p v-if="categoryStatus?.lastSuccessAt" class="hint">最后成功更新：{{ new Date(categoryStatus.lastSuccessAt).toLocaleString('zh-CN') }}</p>
@@ -81,13 +95,18 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <label class="check"><input type="checkbox" v-model="form.enabled"> 启用监控</label>
       <label class="scope-option"><input type="radio" value="all" v-model="form.scope"><span><b>监控全部套餐</b><br>包含所有系列，商家新增的套餐也自动纳入。</span></label>
       <label v-if="groups.length" class="scope-option"><input type="radio" value="categories" v-model="form.scope"><span><b>只监控指定分类</b><br>所选分类的新增套餐也自动纳入。</span></label>
-      <div v-if="form.scope==='categories'" class="category-checks"><label v-for="group in groups" :key="group.id" class="check"><input type="checkbox" :value="group.id" v-model="form.categoryIds">{{group.name}}</label></div>
+      <div v-if="form.scope==='categories'" class="category-checks"><label v-for="group in groups" :key="group.id" class="check"><input type="checkbox" :value="group.id" v-model="form.categoryIds">{{isDmit?dmitRouteLabel(group):group.name}}</label></div>
       <label class="scope-option"><input type="radio" value="selected" v-model="form.scope"><span><b>只监控指定套餐</b><br>在不同系列中分别勾选，切换系列保留选择。</span></label>
-      <PlanCategoryTabs :groups="groups" :active="active?.id" @change="activeId = $event" />
+      <div v-if="isDmit" class="plan-filters dmit-cascades">
+        <div class="field"><label for="dmit-monitor-location">1. 地区</label><select id="dmit-monitor-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div>
+        <div class="field"><label for="dmit-monitor-route">2. 线路</label><select id="dmit-monitor-route" :value="active?.id" @change="activeId=$event.target.value"><option v-for="group in dmitGroups" :key="group.id" :value="group.id">{{dmitRouteLabel(group)}}</option></select></div>
+        <div class="field"><label for="dmit-monitor-hardware">3. 硬件平台</label><select id="dmit-monitor-hardware" v-model="hardwareFilter"><option value="">全部平台</option><option v-for="hardware in hardwares" :key="hardware" :value="hardware">{{hardware}}</option></select></div>
+      </div>
+      <PlanCategoryTabs v-else :groups="groups" :active="active?.id" @change="activeId = $event" />
       <section v-if="active" :id="`plans-${active.id}`" role="tabpanel" :aria-label="active.name">
-        <h3>{{ active.name }}</h3>
+        <h3>{{ isDmit ? dmitRouteLabel(active) : active.name }}</h3>
         <p v-if="active.retired" class="category-warning">该分类已移出商家当前目录，以下为历史记录。</p>
-        <div v-if="dialog.provider?.dynamicCategories || active.plans.length>20" class="plan-filters"><div class="field"><label for="plan-search">搜索套餐</label><input id="plan-search" v-model="search" placeholder="搜索套餐名称、配置"></div><div v-if="locations.length" class="field"><label for="plan-location">地区</label><select id="plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div></div>
+        <div v-if="!isDmit && (dialog.provider?.dynamicCategories || active.plans.length>20)" class="plan-filters"><div class="field"><label for="plan-search">搜索套餐</label><input id="plan-search" v-model="search" placeholder="搜索套餐名称、配置"></div><div v-if="locations.length" class="field"><label for="plan-location">地区</label><select id="plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div></div>
         <p v-if="categoryStatus?.lastError" class="category-warning">本系列探测失败，保留上次套餐列表。</p>
         <button v-if="active.plans.length" class="button ghost" @click="selectCategory">选择此系列全部套餐</button>
         <div class="monitor-plans">

@@ -103,11 +103,12 @@ async function withStore(run) {
   try { await run(store) } finally { store.close(); await rm(dir, { recursive: true, force: true }) }
 }
 
-test('内置商家自动创建全部监控，暂停和删除不会在启动时被重置', () => withStore(async store => {
+test('内置商家只注册目录，启动不会自动创建或恢复监控', () => withStore(async store => {
   bootstrapProviders(store)
-  const monitor = store.getMonitorByProvider('bero-host')
-  assert.equal(monitor.scope, 'all'); assert.equal(monitor.enabled, true); assert.equal(monitor.intervalSeconds, 60)
+  assert.equal(store.getMonitorByProvider('bero-host'), null)
   assert.deepEqual(store.getProvider('bero-host').categories.map(category => category.id), ['ryzen', 'kvm'])
+  const monitor = {id:'bero-manual',providerId:'bero-host',scope:'all',planIds:[],categoryIds:[],enabled:false,intervalSeconds:60,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastRunAt:null,lastError:null,consecutiveFailures:0}
+  store.putMonitor(monitor)
   monitor.enabled = false; store.putMonitor(monitor); bootstrapProviders(store)
   assert.equal(store.getMonitorByProvider('bero-host').enabled, false)
   store.deleteMonitor(monitor.id); bootstrapProviders(store)
@@ -117,6 +118,7 @@ test('内置商家自动创建全部监控，暂停和删除不会在启动时�
 test('页面上架下架、单页失败与恢复：只更新完整成功系列，保留历史状态', () => withStore(async store => {
   bootstrapProviders(store)
   const provider = store.getProvider('bero-host')
+  store.putMonitor({id:'bero-manual',providerId:provider.id,scope:'all',planIds:[],categoryIds:[],enabled:true,intervalSeconds:60,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastRunAt:null,lastError:null,consecutiveFailures:0})
   let fetchPage = fixtureFetch
   registerAdapter({ key: 'bero-fixture', discover: () => discoverBero({ fetchPage }) })
   store.putProvider({ ...provider, adapterKey: 'bero-fixture' })

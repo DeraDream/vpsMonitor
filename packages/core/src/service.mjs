@@ -139,8 +139,45 @@ export function createService(store, {now: notificationNow=Date.now}={}) {
       if(batch.failures.length)addEvent("monitor_partial",`${provider.name}：探测到 ${current.length} 个套餐${batch.failures.length?"，部分系列失败，保留上次状态":""}`,{providerId:provider.id});return monitorView(active);
     });
   }
+  const catalogRuns=new Map();
+  async function refreshProviderCatalog(providerId){
+    if(catalogRuns.has(providerId))return catalogRuns.get(providerId);
+    const task=refreshProviderCatalogInternal(providerId).finally(()=>catalogRuns.delete(providerId));
+    catalogRuns.set(providerId,task);
+    return task;
+  }
+  async function refreshProviderCatalogInternal(providerId){
+    const provider=store.getProvider(providerId);if(!provider)throw new Error("商家不存在");
+    // A catalogue lookup is deliberately separate from monitoring: it never
+    // creates a monitor, events, or Telegram jobs.
+    try{
+      const adapter=getAdapter(provider.adapterKey);if(!adapter)throw new Error(`Adapter ${provider.adapterKey} 尚未安装`);
+      const discovered=await adapter.discover({provider});
+      const batch=Array.isArray(discovered)?{plans:discovered,completedCategories:[],failures:[]}:discovered;
+      if(!batch||!Array.isArray(batch.plans)||!Array.isArray(batch.completedCategories)||!Array.isArray(batch.failures))throw new Error("Adapter discover() 必须返回套餐数组或完整探测结果");
+      if(batch.failures.length)throw new Error(batch.failures.map(f=>`${f.categoryName}：${f.error}`).join("；"));
+      const current=batch.plans.map(plan=>normalizePlan(plan,provider.id)),observedAt=new Date().toISOString();
+      return store.transaction(()=>{
+      const providerUpdate={...provider,catalogLastAttemptAt:observedAt,catalogLastRefreshAt:observedAt,catalogLastError:null};
+      if(Array.isArray(batch.categories))store.putProvider({...providerUpdate,categories:[...batch.categories,...(provider.categories||[]).filter(category=>!batch.categories.some(next=>next.id===category.id)).map(category=>({...category,retired:true}))]});
+      else store.putProvider(providerUpdate);
+      const present=new Set(current.map(plan=>plan.id)),catalogCategories=Array.isArray(batch.categories)?new Set(batch.categories.map(category=>category.id)):null;
+      for(const previous of store.listPlans(provider.id)){
+        if((catalogCategories&&!catalogCategories.has(previous.categoryId))||(batch.completedCategories.includes(previous.categoryId)&&!present.has(previous.id)))store.putPlan({...previous,listed:false,listingCheckedAt:observedAt});
+      }
+      for(const plan of current){
+        const previous=store.getPlan(plan.id);
+        store.putPlan({...previous,...plan,notification:previous?.notification||null,notifications:previous?.notifications||{},observedAt,listed:true});
+      }
+      return store.listPlans(provider.id).filter(plan=>plan.listed!==false);
+    });
+    }catch(error){
+      const active=store.getProvider(providerId);if(active)store.putProvider({...active,catalogLastAttemptAt:new Date().toISOString(),catalogLastError:error.message});
+      throw error;
+    }
+  }
   const running=new Map();
   function runMonitorSafe(monitor){if(running.has(monitor.id))return running.get(monitor.id);const task=runMonitorSafeInternal(monitor).finally(()=>running.delete(monitor.id));running.set(monitor.id,task);return task;}
   async function runMonitorSafeInternal(monitor){try{return await runMonitor(monitor);}catch(error){const active=store.getMonitor(monitor.id);if(!active)throw error;monitor=active;monitor.lastRunAt=new Date().toISOString();monitor.lastDurationMs=0;monitor.lastError=error.message;monitor.consecutiveFailures=(monitor.consecutiveFailures||0)+1;for(const failure of error.failures||[]){monitor.categoryStatuses={...monitor.categoryStatuses,[failure.categoryId]:{...monitor.categoryStatuses?.[failure.categoryId],lastAttemptAt:monitor.lastRunAt,lastError:failure.error}};}store.putMonitor(monitor);addEvent("monitor_failed",`${monitorView(monitor).providerName}：${error.message}`,{providerId:monitor.providerId,error:error.message});throw error;}}
-  return {addEvent,monitorView,validateMonitor,deliverNotifications,runMonitor,runMonitorSafe};
+  return {addEvent,monitorView,validateMonitor,deliverNotifications,runMonitor,runMonitorSafe,refreshProviderCatalog};
 }

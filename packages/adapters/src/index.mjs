@@ -2,6 +2,7 @@ import { beroHost } from "./bero-host/index.mjs";
 import { greenCloud } from "./greencloud/index.mjs";
 import { vpsHosting } from "./vps-hosting/index.mjs";
 import { vmiss } from "./vmiss/index.mjs";
+import { dmit } from "./dmit/index.mjs";
 const adapters = new Map();
 export function registerAdapter(adapter) {
   if (!adapter?.key || typeof adapter.discover !== "function") throw new Error("Adapter 必须包含 key 和 discover() 方法");
@@ -16,3 +17,4 @@ registerAdapter(beroHost);
 registerAdapter(greenCloud);
 registerAdapter(vpsHosting);
 registerAdapter(vmiss);
+registerAdapter(dmit);

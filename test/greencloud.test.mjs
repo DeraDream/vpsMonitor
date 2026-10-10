@@ -57,7 +57,7 @@ test('分类批量请求最多两个并发，单类失败保留其旧状态，�
 test('动态分类持久化、分类监控及初始基线；之后新增和补货产生通知事件',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'vps-green-model-')),store=createDatabase(dir)
  try{
-  bootstrapProviders(store);const provider=store.getProvider('greencloud');assert.equal(provider.adapterKey,'greencloud');assert.equal(store.getMonitorByProvider('greencloud').intervalSeconds,300)
+  bootstrapProviders(store);const provider=store.getProvider('greencloud');assert.equal(provider.adapterKey,'greencloud');assert.equal(store.getMonitorByProvider('greencloud'),null);store.putMonitor({id:'green-manual',providerId:'greencloud',scope:'all',planIds:[],categoryIds:[],enabled:true,intervalSeconds:300,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastRunAt:null,lastError:null,consecutiveFailures:0})
   const initial=parseProducts(fixtures['budget-kvm-sale'],category)
   let batch={categories:[category],plans:initial,completedCategories:[category.id],failures:[]}
   registerAdapter({key:'green-test',discover:async()=>batch});store.putProvider({...provider,adapterKey:'green-test'})

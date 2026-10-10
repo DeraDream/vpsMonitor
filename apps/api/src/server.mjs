@@ -95,6 +95,10 @@ async function api(req,res,url){const p=url.pathname.split("/").filter(Boolean);
   if(req.method==="GET"&&url.pathname==="/api/dashboard")return json(res,200,dashboard());
   if(req.method==="GET"&&url.pathname==="/api/providers")return json(res,200,store.listProviders());
   if(req.method==="GET"&&p[0]==="api"&&p[1]==="providers"&&p[2]&&p[3]==="plans")return json(res,200,store.listPlans(p[2]).filter(plan=>plan.listed!==false));
+  if(req.method==="POST"&&p[0]==="api"&&p[1]==="providers"&&p[2]&&p[3]==="catalog"){
+    if(!store.getProvider(p[2]))return json(res,404,{error:"未找到商家"});
+    try{return json(res,200,await service.refreshProviderCatalog(p[2]));}catch(e){return json(res,400,{error:e.message});}
+  }
   if(req.method==="PATCH"&&p[0]==="api"&&p[1]==="providers"&&p[2]&&p[3]==="monitor"){
     const provider=store.getProvider(p[2]);if(!provider)return json(res,404,{error:"未找到商家"});
     try{const input=await body(req),existing=store.getMonitorByProvider(provider.id),now=new Date().toISOString();const monitor={...(existing||{}),...service.validateMonitor({...existing,...input,providerId:provider.id,planIds:input.selectedPlanIds||input.planIds||existing?.planIds},existing?.id),id:existing?.id||`monitor_${Date.now()}`,createdAt:existing?.createdAt||now,updatedAt:now,lastRunAt:existing?.lastRunAt||null,lastError:existing?.lastError||null};store.putMonitor(monitor);return json(res,200,service.monitorView(monitor));}catch(e){return json(res,400,{error:e.message});}}
