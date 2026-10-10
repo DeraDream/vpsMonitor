@@ -13,8 +13,10 @@ test('Worker 退出时中断的探测不记录为监控失败',async()=>{
  store.putProvider({id:'shutdown',name:'Shutdown fixture',adapterKey:'shutdown-fixture',categories:[]})
  store.putMonitor({id:'shutdown-monitor',providerId:'shutdown',enabled:true,scope:'all',planIds:[],intervalSeconds:60})
  try{
-  const service=createService(store)
-  await assert.rejects(service.runMonitorSafe(store.getMonitor('shutdown-monitor'),{isStopping:()=>true}),/SIGTERM/)
+  const service=createService(store);let stopping=false
+  const run=service.runMonitorSafe(store.getMonitor('shutdown-monitor'),{isStopping:()=>stopping})
+  stopping=true
+  await assert.rejects(run,/SIGTERM/)
   assert.equal(store.getMonitor('shutdown-monitor').lastError,undefined)
   assert.equal(store.listEvents().some(event=>event.type==='monitor_failed'),false)
  }finally{store.close();await rm(dir,{recursive:true,force:true})}
