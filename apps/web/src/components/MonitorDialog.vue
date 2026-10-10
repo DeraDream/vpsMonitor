@@ -11,8 +11,9 @@ const form = reactive({ providerId: props.dialog.providerId, enabled: props.dial
   categoryIds:[...(props.dialog.monitor?.categoryIds||[])],
   intervalSeconds: props.dialog.monitor?.intervalSeconds || props.dialog.provider?.defaultIntervalSeconds || 60 })
 const groups = computed(() => groupPlans(props.dialog.plans, props.dialog.provider?.categories))
+const displayedGroups=computed(()=>props.dialog.type==='monitor'&&form.scope==='categories'?groups.value.filter(group=>form.categoryIds.includes(group.id)):groups.value)
 const activeId = ref(props.dialog.categoryId || groups.value[0]?.id)
-const active = computed(() => groups.value.find(group => group.id === activeId.value) || groups.value[0])
+const active = computed(() => displayedGroups.value.find(group => group.id === activeId.value) || displayedGroups.value[0])
 const isDmit=computed(()=>props.dialog.provider?.adapterKey==='dmit')
 const categoryStatus = computed(() => props.monitors.find(monitor => monitor.providerId === props.dialog.providerId)?.categoryStatuses?.[active.value?.id])
 watch(() => props.dialog.providerId, value => { form.providerId = value; form.planIds = []; activeId.value = groups.value[0]?.id })
@@ -20,7 +21,7 @@ const search=ref(''),locationFilter=ref(''),page=ref(1),pageSize=20
 const hardwareFilter=ref('')
 const locations=computed(()=>[...new Set((active.value?.plans||[]).map(plan=>plan.location).filter(Boolean))].sort())
 const hardwares=computed(()=>[...new Set((active.value?.plans||[]).filter(plan=>!locationFilter.value||plan.location===locationFilter.value).map(plan=>plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()).filter(Boolean))])
-const dmitGroups=computed(()=>groups.value.filter(group=>!locationFilter.value||group.plans.some(plan=>plan.location===locationFilter.value)))
+const dmitGroups=computed(()=>displayedGroups.value.filter(group=>!locationFilter.value||group.plans.some(plan=>plan.location===locationFilter.value)))
 const dmitRouteLabel=group=>({premium:'Premium（三网优化）',eyeball:'Eyeball（家宽优化）','tier-1':'Tier 1（国际路线）'})[group?.id]||group?.name
 const filteredPlans=computed(()=>(active.value?.plans||[]).filter(plan=>{
  const hardware=plan.tags?.find(tag=>/^(as3|an4|an5)$/i.test(tag))?.toUpperCase()
@@ -30,6 +31,7 @@ const pageCount=computed(()=>Math.max(1,Math.ceil(filteredPlans.value.length/pag
 const visiblePlans=computed(()=>filteredPlans.value.slice((Math.min(page.value,pageCount.value)-1)*pageSize,Math.min(page.value,pageCount.value)*pageSize))
 watch(activeId,()=>{locationFilter.value='';hardwareFilter.value='';search.value='';page.value=1})
 watch(locationFilter,()=>{if(isDmit.value){hardwareFilter.value='';if(!dmitGroups.value.some(group=>group.id===activeId.value))activeId.value=dmitGroups.value[0]?.id}})
+watch([()=>form.scope,()=>form.categoryIds.join(',')],()=>{if(!displayedGroups.value.some(group=>group.id===activeId.value))activeId.value=displayedGroups.value[0]?.id})
 watch([search,locationFilter,hardwareFilter],()=>page.value=1)
 function statusLabel(plan){return !plan.available?'缺货':plan.availabilitySource==='order-button'?'可订购 · 数量未公开':'有货'}
 const intervalInput=ref(null),formError=ref('')
@@ -80,14 +82,13 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <div class="controls modal-actions"><button class="button ghost" @click="$emit('close')">关闭</button></div>
     </template>
     <template v-else>
-      <h2 id="monitor-dialog-title">{{ dialog.monitor ? '编辑' : '添加' }}监控任务</h2>
+      <h2 id="monitor-dialog-title">{{ dialog.monitor ? `编辑 ${dialog.provider?.name || ''} 监控任务` : '添加监控任务' }}</h2>
       <p class="hint">每个商家一个任务，可同时监控不同系列。</p>
-      <div class="field"><label for="monitor-provider">1. 选择商家</label><select id="monitor-provider" v-model="form.providerId" :disabled="!!dialog.monitor" @change="$emit('change-provider', form.providerId)">
+      <div v-if="!dialog.monitor" class="field"><label for="monitor-provider">1. 选择商家</label><select id="monitor-provider" v-model="form.providerId" @change="$emit('change-provider', form.providerId)">
         <option :value="null" disabled>请选择商家</option>
         <option v-for="provider in providers" :key="provider.id" :value="provider.id">{{ provider.name }}{{monitors.some(m=>m.providerId===provider.id)?'（已建立监控，选择后编辑）':''}}</option>
       </select></div>
       <p v-if="!providers.length" class="hint">暂无已接入商家，请先接入商家后添加监控。</p>
-      <p v-if="dialog.monitor" class="hint">此商家已有监控任务，保存会更新该任务。</p>
       <p v-if="dialog.loading" class="hint" role="status">正在加载商家套餐…</p>
       <p v-if="dialog.error" class="category-warning" role="alert">套餐加载失败：{{dialog.error}}，请关闭后重试。</p>
       <template v-if="form.providerId && !dialog.loading && !dialog.error">
@@ -97,26 +98,30 @@ onUnmounted(()=>{window.removeEventListener('keydown',onKey);document.body.style
       <label v-if="groups.length" class="scope-option"><input type="radio" value="categories" v-model="form.scope"><span><b>只监控指定分类</b><br>所选分类的新增套餐也自动纳入。</span></label>
       <div v-if="form.scope==='categories'" class="category-checks"><label v-for="group in groups" :key="group.id" class="check"><input type="checkbox" :value="group.id" v-model="form.categoryIds">{{isDmit?dmitRouteLabel(group):group.name}}</label></div>
       <label class="scope-option"><input type="radio" value="selected" v-model="form.scope"><span><b>只监控指定套餐</b><br>在不同系列中分别勾选，切换系列保留选择。</span></label>
+      <h3>{{ form.scope==='selected' ? '3. 选择具体套餐' : '3. 套餐列表' }}</h3>
+      <p v-if="form.scope === 'categories' && !displayedGroups.length" class="hint">请先在上方选择至少一个套餐分类。</p>
       <div v-if="isDmit" class="plan-filters dmit-cascades">
         <div class="field"><label for="dmit-monitor-location">1. 地区</label><select id="dmit-monitor-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div>
         <div class="field"><label for="dmit-monitor-route">2. 线路</label><select id="dmit-monitor-route" :value="active?.id" @change="activeId=$event.target.value"><option v-for="group in dmitGroups" :key="group.id" :value="group.id">{{dmitRouteLabel(group)}}</option></select></div>
         <div class="field"><label for="dmit-monitor-hardware">3. 硬件平台</label><select id="dmit-monitor-hardware" v-model="hardwareFilter"><option value="">全部平台</option><option v-for="hardware in hardwares" :key="hardware" :value="hardware">{{hardware}}</option></select></div>
       </div>
-      <PlanCategoryTabs v-else :groups="groups" :active="active?.id" @change="activeId = $event" />
+      <PlanCategoryTabs v-else :groups="displayedGroups" :active="active?.id" @change="activeId = $event" />
       <section v-if="active" :id="`plans-${active.id}`" role="tabpanel" :aria-label="active.name">
         <h3>{{ isDmit ? dmitRouteLabel(active) : active.name }}</h3>
         <p v-if="active.retired" class="category-warning">该分类已移出商家当前目录，以下为历史记录。</p>
         <div v-if="!isDmit && (dialog.provider?.dynamicCategories || active.plans.length>20)" class="plan-filters"><div class="field"><label for="plan-search">搜索套餐</label><input id="plan-search" v-model="search" placeholder="搜索套餐名称、配置"></div><div v-if="locations.length" class="field"><label for="plan-location">地区</label><select id="plan-location" v-model="locationFilter"><option value="">全部地区</option><option v-for="location in locations" :key="location" :value="location">{{location}}</option></select></div></div>
         <p v-if="categoryStatus?.lastError" class="category-warning">本系列探测失败，保留上次套餐列表。</p>
-        <button v-if="active.plans.length" class="button ghost" @click="selectCategory">选择此系列全部套餐</button>
-        <div class="monitor-plans">
-          <article v-for="plan in visiblePlans" :key="plan.id" class="monitor-plan-choice" :class="{selected:form.planIds.includes(plan.id)}">
-            <label class="plan-choice-heading"><input type="checkbox" :value="plan.id" v-model="form.planIds" @change="form.scope = 'selected'"><span>{{plan.name}}<span class="meta">{{statusLabel(plan)}}</span></span><strong class="plan-choice-price">{{plan.price||'价格未知'}}</strong></label>
-            <PlanDetails :plan="plan"/><p v-if="Number.isInteger(plan.quantity)" class="meta">库存：{{plan.quantity}} 台</p>
-            <a v-if="dialog.providerId==='greencloud'&&plan.buyUrl" class="button ghost" :href="plan.buyUrl" target="_blank" rel="noopener noreferrer">查看套餐购买页</a>
+        <button v-if="form.scope==='selected'&&active.plans.length" class="button ghost" @click="selectCategory">选择此系列全部套餐</button>
+        <section v-if="active.plans.length" class="plan-grid modal-plans monitor-plan-grid">
+          <article v-for="plan in visiblePlans" :key="plan.id" class="plan-card" :class="{selected:form.planIds.includes(plan.id)}">
+            <label v-if="form.scope==='selected'" class="check monitor-plan-select"><input type="checkbox" :value="plan.id" v-model="form.planIds"><span>选择此套餐</span></label>
+            <p class="meta">{{ plan.location || '未标注地区' }}</p><h3>{{ plan.name }}</h3>
+            <PlanDetails :plan="plan"/><p class="price">{{ plan.price || '价格未知' }}{{ plan.billingCycle ? ` / ${plan.billingCycle}` : '' }}</p>
+            <p v-if="Number.isInteger(plan.quantity)" class="meta">库存：{{plan.quantity}} 台</p><p class="status" :class="{ available: plan.available }">{{statusLabel(plan)}}</p>
+            <a v-if="plan.buyUrl" class="button secondary" :href="plan.buyUrl" target="_blank" rel="noopener noreferrer">{{dialog.providerId==='greencloud'?'查看套餐购买页':'查看商家页面'}}</a>
           </article>
-          <p v-if="!active.plans.length" class="hint">{{categoryStatus?.lastSuccessAt?'该分类当前没有公开套餐。':'该系列尚未抓取到套餐；保存“全部套餐”监控后会自动发现。'}}</p>
-        </div>
+        </section>
+        <p v-else class="hint">{{categoryStatus?.lastSuccessAt?'该分类当前没有公开套餐。':'该系列尚未抓取到套餐；保存“全部套餐”监控后会自动发现。'}}</p>
       <p v-if="active.plans.length&&!filteredPlans.length" class="hint">没有匹配的套餐，请调整搜索或地区。</p>
       <div v-if="pageCount>1" class="plan-pagination"><button class="button ghost" :disabled="page<=1" @click="page--">上一页</button><span class="hint">第 {{Math.min(page,pageCount)}} / {{pageCount}} 页 · {{filteredPlans.length}} 个套餐</span><button class="button ghost" :disabled="page>=pageCount" @click="page++">下一页</button></div>
       </section>
